@@ -1,0 +1,34 @@
+[
+    { 
+        "id": "jamta", 
+        "sort_id": 1,
+        "path": "music/jamta.mp3", 
+        "title": "Jamta Joya Chhe", 
+        "author": "Thaal Chintamani 2", 
+        "image": "music/jamta.jpg" 
+    },
+    { 
+        "id": "chesta", 
+        "sort_id": 99,
+        "path": "music/chesta.mp3", 
+        "title": "Chesta", 
+        "author": "Kundaldham", 
+        "image": "" 
+    },
+    { 
+        "id": "naath", 
+        "sort_id": 3,
+        "path": "music/naath.mp3", 
+        "title": "Naath Nirakhya Chhe", 
+        "author": "Swarup Chintamani 1", 
+        "image": "music/naath.jpg" 
+    },
+    { 
+        "id": "aaj_mare", 
+        "sort_id": 2,
+        "path": "music/aaj_mare.mp3", 
+        "title": "Aaj Mare Orde Re", 
+        "author": "Kundaldham", 
+        "image": "" 
+    }
+]

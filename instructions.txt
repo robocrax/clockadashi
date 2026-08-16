@@ -1,0 +1,113 @@
+
+Webpage Layout & Responsiveness
+Create a fully responsive webpage with no scrolling; all content must always fit within the available viewport.
+
+Minimize whitespace and ensure all elements scale to use the screen efficiently.
+
+The page will run on low‑end hardware, so keep all code lightweight and low‑CPU.
+
+Clock Requirements
+Build a 12‑hour digital clock with hours, minutes, and seconds, no AM/PM indicator.
+
+Use a minimal, modern design with very large, extra‑bold typography.
+
+Preferred fonts: Inter Black, Google Sans, or Roboto Black.
+
+The clock must:
+
+Fill maximum possible width and height.
+
+Maintain bare‑minimum margins/padding.
+
+Never overflow the screen; wrap it in a max‑width limiter.
+
+Re‑center itself dynamically when other text (events, date, etc.) appears.
+
+Add the current date beneath or above the clock in a clean, unobtrusive style.
+
+Calendar & Events Integration
+Integrate a smart event system using a manually maintained CSV file (to avoid unwanted events from the original iCal feed).
+
+Avoid caching the CSV file; always fetch fresh data.
+
+Supported event types:
+
+Ekadashi (special handling)
+
+Eclipses
+
+Selected high‑impact Bhuj Mandir events
+
+Source reference: https://www.swaminarayan.faith/news-and-events/calendar
+
+Ekadashi Logic & Visual Behavior
+Create an Ekadashi countdown system:
+
+Start a progress bar exactly 8 days before each Ekadashi.
+
+Only Ekadashi events use the progress bar; all other events do not.
+
+Background color rules:
+
+Default: black.
+
+4 days before Ekadashi: begin a subtle gradient toward dark purple.
+
+1 day before Ekadashi: background becomes #830300 (red/maroon).
+
+Display text such as:
+“4 days until Ekadashi on Thursday” (include the weekday).
+
+On Ekadashi day:
+
+Background becomes #ed6d19.
+
+Show the event name prominently.
+
+Hide the progress bar.
+
+For non‑Ekadashi events:
+
+Keep background black.
+
+Display the event name on the day of the event.
+
+Layout Behavior With Events
+When any event text or countdown text is displayed:
+
+Recalculate layout so the clock remains centered in the remaining space.
+
+Maintain the largest possible clock font size without overflow.
+
+Fullscreen Interaction
+Tapping/clicking anywhere on the screen toggles fullscreen mode:
+
+If not fullscreen → enter fullscreen.
+
+If fullscreen → exit fullscreen.
+
+Fallback Behavior
+If JavaScript fails to load or run, display the message:
+“Javascript is not supported on this browser”
+
+
+
+
+
+
+
+
+
+
+
+
+
+this is good. but i have just realized a flaw when there are multiple events on the same day
+
+lets change some functionality so that the timer for X amount of days left text is moved just above the progress bar, so that the title area is ready for other events or blank in case there are none.
+
+if there are more events, they can be listed in new lines with line breaks, still making sure they do not overlap with the clock if they are more than 5 or so events, in this case just reduce the text size so they still fit
+
+The progress bar is only for "Ekadashi" Type events, so let's change the definition in the CSV where all other events do not have a type (which is the default) and ekadashis have a "ProgressBar" Type now so that i can mark any event that requires to be counted down.
+
+if there are 2 or more ProgressBar events then create more progress bars as needed

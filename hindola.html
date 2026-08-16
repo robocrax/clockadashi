@@ -1,0 +1,778 @@
+<style>
+
+    :root {
+      --primary: #3b82f6; 
+      --acc-green: #10b981;
+      --acc-grey: #64748b;
+      --special: #a855f7;
+      
+      /* Base Page Colors */
+      --bg-main: #0f172a; 
+      --bg-card: #1e293b;
+      --text-main: #f1f5f9;
+      --text-muted: #94a3b8;
+      --border: #334155;
+      --hover-bg: rgba(255,255,255,0.03);
+      --input-bg: #0f172a;
+      --tc-bg: #0f172a;
+      --sheet-btn-bg: #334155;
+      --sheet-btn-text: #cbd5e1;
+      --idle-bg: rgba(15, 23, 42, 0.85);
+      
+      --tag-avail-bg: rgba(16, 185, 129, 0.15);
+      --tag-avail-txt: #34d399;
+      --tag-book-bg: rgba(100, 116, 139, 0.2);
+      --tag-book-txt: #94a3b8;
+
+      --msg-bg: rgba(245, 158, 11, 0.1);
+      --msg-txt: #fcd34d;
+      --msg-border: #b45309;
+    }
+
+    /* WORDPRESS GLOBAL DARK MODE OVERRIDES (Excluding Header) */
+    body, main, #main, .site-main, .site-content {
+      background-color: var(--bg-main) !important;
+      color: var(--text-main) !important;
+    }
+    
+    footer, #colophon, .site-footer {
+      background-color: var(--bg-main) !important;
+      color: #ffffff !important;
+    }
+    
+    footer *, #colophon *, .site-footer * {
+      color: #ffffff !important;
+    }
+
+    main h1, main h2, main h3, main h4, main h5, main h6,
+    .site-main h1, .site-main h2, .site-main h3, .site-main h4, .site-main h5, .site-main h6,
+    #hindola-app h2, #hindola-app h3 {
+      color: var(--text-main) !important;
+    }
+
+  #hindola-app {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: var(--text-main);
+    background: transparent;
+    max-width: 1000px;
+    margin: 0 auto;
+    position: relative;
+  }
+
+  #hindola-app * { box-sizing: border-box; }
+
+  /* --- Header & Controls --- */
+  .app-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 15px; }
+  .app-header h2 { color: var(--text-main); margin: 0;}
+  
+  .view-toggle { background: var(--primary); color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 14px; transition: opacity 0.2s; }
+  .view-toggle:hover { opacity: 0.8; }
+
+  /* --- Grid/Calendar View --- */
+  .calendar-container { display: grid; grid-template-columns: repeat(7, 1fr); gap: 10px; transition: all 0.3s ease; }
+  .day-header { text-align: center; font-weight: bold; padding: 10px 0; border-bottom: 2px solid var(--primary); color: var(--text-main); }
+
+  /* --- Slots Layout (Unified Structure) --- */
+  .slot-wrapper {
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: var(--bg-card);
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
+    overflow: hidden;
+    position: relative;
+    min-height: 120px;
+    cursor: pointer; /* Makes entire block including tags clickable */
+  }
+
+  .slot-wrapper:hover { border-color: var(--acc-grey); }
+
+  .group-wrapper { grid-column: span 2; }
+  .slot-top { display: flex; flex: 1; pointer-events: none; /* Let wrapper handle clicks */ }
+  .day-col { flex: 1; padding: 15px; display: flex; flex-direction: column; transition: background 0.2s; }
+  
+  .slot-wrapper.is-available:hover .day-col { background: var(--hover-bg); }
+  .group-wrapper .day-col:first-child { border-right: 1px dashed var(--border); }
+  .slot-bottom { padding: 5px 15px 15px; display: flex; flex-direction: column; align-items: center; justify-content: center; pointer-events: none;}
+
+  /* --- Interaction States --- */
+  .slot-selected { border-color: var(--acc-green) !important; box-shadow: 0 0 0 3px rgba(39, 174, 96, 0.3) !important; transform: scale(1.02); z-index: 10; }
+
+  /* --- Typography & Content --- */
+  .date-label { font-size: 18px; font-weight: bold; color: var(--text-main); }
+  .day-label { font-size: 12px; color: var(--text-muted); text-transform: uppercase; }
+  .special-label { font-size: 11px; color: white; background: var(--special); padding: 2px 6px; border-radius: 4px; margin-top: 5px; display: inline-block; align-self: flex-start;}
+  
+  .design-label { font-size: 13px; color: var(--text-main); margin-bottom: 5px; text-align: center; }
+  .list-design-label { display: none; font-size: 13px; color: var(--text-main); font-style: italic; text-align: left; margin-top: 8px; }
+
+  /* Mobile Date Span Toggles */
+  .m-date { display: none; }
+  .d-date { display: inline; }
+
+  /* --- Status Tags --- */
+  .status-tag { display: inline-flex; align-items: center; font-size: 12px; padding: 4px 8px; border-radius: 12px; font-weight: 600; justify-content: center;}
+  .status-available { background: var(--tag-avail-bg); color: var(--tag-avail-txt); }
+  .status-booked { background: var(--tag-book-bg); color: var(--tag-book-txt); display: none; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; }
+  .status-available .dot { background-color: var(--acc-green); animation: pulse 1.5s infinite; }
+  .status-booked .dot { background-color: var(--acc-grey); }
+
+  @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); } 70% { box-shadow: 0 0 0 6px rgba(16, 185, 129, 0); } 100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); } }
+
+  .animate-in { animation: fadeIn 0.4s ease forwards; opacity: 0; }
+  @keyframes fadeIn { 0% { opacity: 0; transform: translateY(10px); } 100% { opacity: 1; transform: translateY(0); } }
+
+  /* --- List View Overrides --- */
+  .list-view { display: flex; flex-direction: column; }
+  .list-view .day-header { display: none; }
+  .list-view .slot-wrapper { grid-column: span 1; flex-direction: row; margin-bottom: 10px; align-items: center;}
+  
+  .list-view .slot-top { flex: initial; align-items: center; }
+  .list-view .day-col { padding: 15px; }
+  .list-view .group-wrapper .day-col:first-child { border-right: 1px dashed var(--border); }
+  
+  .list-view .slot-bottom { flex: 1; align-items: flex-end; padding: 15px; justify-content: center; border-bottom: none !important; }
+  .list-view .design-label { display: none; } 
+  .list-view .list-design-label { display: block; } 
+  .week-separator { border-top: 2px dotted var(--border); margin: 15px 0; width: 100%; grid-column: 1 / -1; }
+
+  /* --- Mobile Compact View (7 Columns) --- */
+  @media (max-width: 768px) {
+    .calendar-container:not(.list-view) { grid-template-columns: repeat(7, 1fr); gap: 6px; }
+    
+    .calendar-container:not(.list-view) .day-label,
+    .calendar-container:not(.list-view) .special-label,
+    .calendar-container:not(.list-view) .design-label,
+    .calendar-container:not(.list-view) .status-tag,
+    .calendar-container:not(.list-view) .list-design-label,
+    .calendar-container:not(.list-view) .slot-bottom,
+    .calendar-container:not(.list-view) .d-date { display: none !important; }
+    
+    .calendar-container:not(.list-view) .m-date { display: inline !important; }
+    
+    .calendar-container:not(.list-view) .day-header { font-size: 11px; padding: 5px 0; }
+    .calendar-container:not(.list-view) .slot-wrapper { min-height: 60px; justify-content: center; border-width: 1px 1px 4px 1px; border-radius: 8px;}
+    .calendar-container:not(.list-view) .day-col { padding: 5px; align-items: center; justify-content: center; }
+    .calendar-container:not(.list-view) .date-label { font-size: 16px; }
+
+    /* Colored Bottom Bars for mobile compact view */
+    .calendar-container:not(.list-view) .slot-wrapper.is-available { border-bottom-color: var(--acc-green); }
+    .calendar-container:not(.list-view) .slot-wrapper.is-booked { border-bottom-color: var(--acc-grey); }
+    .calendar-container:not(.list-view) .slot-wrapper.is-special { border-bottom-color: var(--special); }
+  }
+
+  /* ========================================================
+     FLOATING BOTTOM SHEET MODAL
+     ======================================================== */
+  .sheet-overlay {
+    position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(15, 23, 42, 0.5); backdrop-filter: blur(4px);
+    z-index: 9999; display: flex; align-items: flex-end; justify-content: center;
+    padding: 20px; opacity: 0; visibility: hidden; transition: opacity 0.4s ease, visibility 0.4s;
+  }
+  .sheet-overlay.active { opacity: 1; visibility: visible; }
+
+  .bottom-sheet {
+    background: var(--bg-card); width: 100%; max-width: 550px;
+    border-radius: 24px; padding: 30px;
+    box-shadow: 0 25px 50px rgba(0,0,0,0.25), 0 0 0 1px rgba(0,0,0,0.05);
+    transform: translateY(150px) scale(0.95); opacity: 0;
+    transition: all 0.5s cubic-bezier(0.2, 0.9, 0.3, 1);
+    max-height: 90vh; height: auto; overflow-y: auto; position: relative;
+    display: flex; flex-direction: column;
+  }
+  
+  .sheet-overlay.active .bottom-sheet { transform: translateY(0) scale(1); opacity: 1; }
+  .bottom-sheet.is-fullscreen { height: calc(100vh - 40px); max-height: 100vh; max-width: 650px; }
+
+  .form-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 2px solid var(--border); padding-bottom: 15px; }
+  .form-header h3 { margin: 0; font-size: 20px; color: var(--text-main); }
+  .close-btn { background: var(--sheet-btn-bg); border: none; width: 32px; height: 32px; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 20px; cursor: pointer; color: var(--sheet-btn-text); transition: opacity 0.2s; }
+  .close-btn:hover { opacity: 0.7; }
+
+  .form-stagger { animation: slideUpFade 0.5s ease backwards; }
+  @keyframes slideUpFade { 0% { opacity: 0; transform: translateY(15px); } 100% { opacity: 1; transform: translateY(0); } }
+
+  .form-group { margin-bottom: 18px; }
+  .form-group label { display: block; font-weight: 600; margin-bottom: 6px; font-size: 14px; color: var(--text-muted); }
+  .req-ast { color: var(--red-ast); margin-left: 2px; }
+  
+  .form-group input { width: 100%; padding: 12px; border: 1px solid var(--border); border-radius: 8px; font-size: 15px; transition: border-color 0.2s; background: var(--input-bg); color: var(--text-main); }
+  .form-group input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(44, 62, 80, 0.1); }
+  .form-group input:disabled { opacity: 0.6; cursor: not-allowed; border-color: transparent; }
+
+  /* Inline Error Styles */
+  .error-msg { color: var(--red-ast); font-size: 12px; margin-top: 6px; display: none; font-weight: 600; }
+  .input-error { border-color: var(--red-ast) !important; box-shadow: 0 0 0 3px rgba(225, 29, 72, 0.1) !important; }
+
+  /* Special Event Input Styling */
+  .form-group input.is-special-input:disabled {
+    background: var(--special) !important;
+    color: #ffffff !important;
+    border-color: var(--special) !important;
+    opacity: 1 !important; 
+    font-weight: 600;
+    -webkit-text-fill-color: #ffffff; 
+  }
+
+  /* System Messaging */
+  .system-message, .warning-banner { text-align: center; padding: 15px; border-radius: 8px; font-weight: bold; margin-bottom: 20px; background: var(--msg-bg); color: var(--msg-txt); border: 1px solid var(--msg-border); display: none; line-height: 1.4; }
+  .warning-banner { text-align: left; font-weight: normal; font-size: 13px; border: none; border-left: 4px solid var(--msg-border); margin-bottom: 18px;}
+
+  .btn { background: var(--primary); color: white; border: none; padding: 14px 24px; border-radius: 10px; cursor: pointer; font-weight: 600; font-size: 16px; width: 100%; transition: transform 0.1s, opacity 0.2s; margin-top: 10px; }
+  .btn:hover { opacity: 0.9; transform: translateY(-1px); }
+  .btn:active { transform: translateY(1px); }
+  .btn:disabled { background: var(--acc-grey); cursor: not-allowed; transform: none; }
+
+  .tc-container { background: var(--tc-bg); padding: 20px; border-radius: 12px; border: 1px solid var(--border); margin-top: 25px; margin-bottom: 10px; }
+  .tc-item { display: flex; align-items: flex-start; margin-bottom: 12px; gap: 12px; font-size: 14px; color: var(--text-muted); line-height: 1.4; }
+  .tc-item input { margin-top: 2px; width: 18px; height: 18px; accent-color: var(--primary); cursor: pointer; }
+  .tc-item label { cursor: pointer; }
+
+  /* --- Idle Overlay --- */
+  .idle-overlay { position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: var(--idle-bg); backdrop-filter: blur(2px); z-index: 9998; display: none; align-items: center; justify-content: center; text-align: center; border-radius: 8px; cursor: pointer;}
+  .idle-overlay.active { display: flex; animation: fadeIn 0.4s; }
+  .idle-content { background: var(--bg-card); padding: 30px; border-radius: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); border: 1px solid var(--border); }
+  .idle-content h3 { margin-top: 0; color: var(--text-main); }
+
+  @media print {
+    @page { size: A4 landscape; margin: 10mm; }
+    body * { visibility: hidden; }
+    #hindola-app, #hindola-app * { visibility: visible; }
+    #hindola-app { position: absolute; left: 0; top: 0; width: 100%; }
+    .app-header, .status-tag, .sheet-overlay, .view-toggle, .idle-overlay { display: none !important; }
+    .calendar-container { display: grid !important; grid-template-columns: repeat(7, 1fr) !important; gap: 5px; }
+    .slot-wrapper { box-shadow: none; break-inside: avoid; border-color: #000; }
+    .group-wrapper .day-col:first-child { border-color: #000; }
+  }
+
+  @media (max-width: 768px) {
+    .sheet-overlay { padding: 10px; }
+    .bottom-sheet.is-fullscreen { height: calc(100vh - 20px); }
+  }
+</style>
+
+<div id="hindola-app">
+  <div class="app-header">
+    <h2>Hindola Schedule</h2>
+  </div>
+
+  <div id="fullBookedMsg" class="system-message">
+    All slots are currently booked. No further bookings can be made.
+  </div>
+<!-- 
+  <!-- Idle Overlay --
+  <div id="idle-screen" class="idle-overlay" onclick="wakeUpSession()">
+    <div class="idle-content">
+      <h3>Session Paused</h3>
+      <p style="color: var(--text-muted);">Tap anywhere to refresh available slots.</p>
+    </div>
+  </div> -->
+
+  <div id="calendar" class="calendar-container">
+    <!-- Headers -->
+    <div class="day-header">Sun</div>
+    <div class="day-header">Mon</div>
+    <div class="day-header">Tue</div>
+    <div class="day-header">Wed</div>
+    <div class="day-header">Thu</div>
+    <div class="day-header">Fri</div>
+    <div class="day-header">Sat</div>
+  </div>
+
+  <!-- Floating Bottom Sheet Modal -->
+  <div id="booking-sheet-overlay" class="sheet-overlay">
+    <div id="bottom-sheet" class="bottom-sheet">
+      <!-- Injected via JS -->
+    </div>
+  </div>
+</div>
+
+<script data-cfasync="false" data-no-optimize="1" data-noptimize="1">
+  const API_GET_SLOTS = 'https://n8n.robocrax.com/webhook/hindola-2026-booking-slots';
+  const API_POST_BOOK = 'https://n8n.robocrax.com/webhook/hindola-2026-book';
+  const START_DATE = new Date(2026, 6, 31);
+  const END_DATE = new Date(2026, 7, 29);
+  
+  const SPECIAL_EVENTS = {
+    '2026-08-09': 'Kamika Ekadashi',
+    '2026-08-24': 'Putrada Ekadashi',
+    '2026-08-28': 'Raksha Bandhan'
+  };
+
+  let slotsData = [];
+  let isListView = false;
+  let currentSelectedSlot = null; 
+
+  // --- Idle Timeout Logic ---
+  let idleTimer;
+  const IDLE_LIMIT_MS = 5 * 1000; // 10 minutes
+
+  function resetIdleTimer() {
+    clearTimeout(idleTimer);
+    idleTimer = setTimeout(() => {
+      document.getElementById('idle-screen').classList.add('active');
+    }, IDLE_LIMIT_MS);
+  }
+
+  window.wakeUpSession = function() {
+    document.getElementById('idle-screen').classList.remove('active');
+    loadData(); // Refresh data from database
+    resetIdleTimer();
+  };
+
+  ['mousemove', 'touchstart', 'keydown', 'click'].forEach(evt => {
+    document.addEventListener(evt, resetIdleTimer, { passive: true });
+  });
+
+  // --- Core Logistics ---
+  document.getElementById('booking-sheet-overlay').addEventListener('click', function(e) {
+    if(e.target === this) closeSheet();
+  });
+
+  const formatDateStr = (date) => {
+    const d = date.getDate().toString().padStart(2, '0');
+    const m = (date.getMonth() + 1).toString().padStart(2, '0');
+    const y = date.getFullYear();
+    return `${y}-${m}-${d}`;
+  };
+
+  const getDayName = (date) => date.toLocaleDateString('en-US', { weekday: 'short' });
+  const getMonthDay = (date) => date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+
+  function generateSlotsLogic() {
+    let current = new Date(START_DATE);
+    const rawDays = [];
+    while (current <= END_DATE) {
+      const dateStr = formatDateStr(current);
+      rawDays.push({
+        dateStr: dateStr, dateObj: new Date(current), dayOfWeek: current.getDay(),
+        specialName: SPECIAL_EVENTS[dateStr] || null, booked: false, design: null       
+      });
+      current.setDate(current.getDate() + 1);
+    }
+    const processedSlots = [];
+    let i = 0;
+    while (i < rawDays.length) {
+      const today = rawDays[i]; const tomorrow = rawDays[i + 1];
+      
+      let isFridayGroup = false;
+      if (today.dayOfWeek === 5) {
+        if (tomorrow) {
+          if (tomorrow.dayOfWeek === 6) {
+            if (!today.specialName) {
+              if (!tomorrow.specialName) {
+                isFridayGroup = true;
+              }
+            }
+          }
+        }
+      }
+
+      let isSundayGroup = false;
+      if (today.dayOfWeek === 0) {
+        if (tomorrow) {
+          if (tomorrow.dayOfWeek === 1) {
+            if (!today.specialName) {
+              if (!tomorrow.specialName) {
+                isSundayGroup = true;
+              }
+            }
+          }
+        }
+      }
+
+      if (isFridayGroup || isSundayGroup) {
+        processedSlots.push({ type: 'group', days: [today, tomorrow] }); i += 2; continue;
+      }
+      processedSlots.push({ type: 'single', days: [today] }); i++;
+    }
+    return processedSlots;
+  }
+
+  async function loadData() {
+    slotsData = generateSlotsLogic();
+    try {
+      const response = await fetch(API_GET_SLOTS);
+      if(response.ok) {
+        const bookedData = await response.json();
+        slotsData.forEach(slotItem => {
+          slotItem.days.forEach(day => {
+            const apiData = bookedData.find(b => b.date === day.dateStr);
+            if (apiData) { day.booked = true; day.design = apiData.design; }
+          });
+        });
+      }
+    } catch (e) { console.warn("Could not fetch slot data. Showing default structure."); }
+    renderCalendar();
+  }
+
+  function renderCalendar() {
+    const container = document.getElementById('calendar');
+    Array.from(container.children).forEach(child => { if (!child.classList.contains('day-header')) child.remove(); });
+    let allBooked = true; let animDelay = 0;
+
+    if (!isListView) {
+      const firstDayOffset = START_DATE.getDay();
+      for (let i = 0; i < firstDayOffset; i++) { container.appendChild(document.createElement('div')); }
+    }
+
+    slotsData.forEach((slotItem, index) => {
+      // List View Week Separator
+      if (isListView) {
+        if (index > 0) {
+          if (slotItem.days[0].dayOfWeek === 0) {
+            const sep = document.createElement('div');
+            sep.className = 'week-separator animate-in';
+            sep.style.animationDelay = `${animDelay}s`;
+            container.appendChild(sep);
+          }
+        }
+      }
+
+      const element = buildSlotElement(slotItem, animDelay);
+      container.appendChild(element);
+      
+      const isCompletelyBooked = slotItem.days.every(d => d.booked);
+      if (!isCompletelyBooked) allBooked = false;
+      
+      animDelay += 0.05;
+    });
+    
+    if (allBooked) { document.getElementById('fullBookedMsg').style.display = 'block'; }
+  }
+
+  function buildSlotElement(slotItem, animDelay) {
+    const wrapper = document.createElement('div');
+    
+    const isBooked = slotItem.days.some(d => d.booked);
+    const sharedSpecial = slotItem.days.find(d => d.specialName)?.specialName || null;
+    const sharedDesign = slotItem.days.find(d => d.design)?.design || null;
+
+    wrapper.className = slotItem.type === 'group' ? 'slot-wrapper group-wrapper animate-in' : 'slot-wrapper animate-in';
+    wrapper.classList.add(isBooked ? 'is-booked' : (sharedSpecial ? 'is-special' : 'is-available'));
+    wrapper.style.animationDelay = `${animDelay}s`;
+    
+    // Universal Click Handler for the entire wrapper
+    wrapper.onclick = (e) => {
+      if (isBooked) {
+        viewBookedDesign(slotItem);
+        return;
+      }
+      
+      // Determine exactly which day column they clicked to show correct warning
+      let clickedDay = slotItem.days[0];
+      const targetCol = e.target.closest('.day-col');
+      if (targetCol) {
+         const cols = Array.from(wrapper.querySelectorAll('.day-col'));
+         const idx = cols.indexOf(targetCol);
+         if (idx !== -1 && slotItem.days[idx]) {
+            clickedDay = slotItem.days[idx];
+         }
+      }
+      triggerSlotSelection(wrapper, slotItem, clickedDay);
+    };
+    
+    const slotTop = document.createElement('div');
+    slotTop.className = 'slot-top';
+
+    slotItem.days.forEach(day => {
+      const dayCol = document.createElement('div');
+      dayCol.className = 'day-col';
+      
+      let localDesignContent = '';
+      if (day.booked || day.specialName) {
+        if (day.design) {
+          localDesignContent = `<div class="list-design-label">Design: ${day.design}</div>`;
+        }
+      }
+
+      dayCol.innerHTML = `
+        <div class="day-label">${getDayName(day.dateObj)}</div>
+        <div class="date-label">
+          <span class="d-date">${getMonthDay(day.dateObj)}</span>
+          <span class="m-date">${day.dateObj.getDate()}</span>
+        </div>
+        ${day.specialName ? `<div class="special-label">${day.specialName}</div>` : ''}
+        ${localDesignContent}
+      `;
+      slotTop.appendChild(dayCol);
+    });
+    wrapper.appendChild(slotTop);
+
+    let statusTag = isBooked 
+      ? `<div class="status-tag status-booked"><div class="dot"></div>Booked</div>` 
+      : `<div class="status-tag status-available"><div class="dot"></div>Available</div>`;
+    
+    let designContent = '';
+    if (isBooked || sharedSpecial) {
+      if (sharedDesign) {
+        designContent = `<div class="design-label">${sharedDesign}</div>`;
+      }
+    }
+
+    const slotBottom = document.createElement('div');
+    slotBottom.className = 'slot-bottom';
+    slotBottom.innerHTML = designContent + statusTag;
+    
+    wrapper.appendChild(slotBottom);
+    return wrapper;
+  }
+
+  window.toggleView = function() {
+    const container = document.getElementById('calendar'); const btn = document.getElementById('toggleViewBtn');
+    isListView = !isListView;
+    if (isListView) { container.classList.add('list-view'); btn.innerText = "Switch to Calendar View"; } 
+    else { container.classList.remove('list-view'); btn.innerText = "Switch to List View"; }
+    renderCalendar();
+  }
+
+  function triggerSlotSelection(targetWrapper, slotItem, clickedDay) {
+    document.querySelectorAll('.slot-selected').forEach(el => el.classList.remove('slot-selected'));
+    targetWrapper.classList.add('slot-selected');
+    openSheet(slotItem, clickedDay);
+  }
+
+  function viewBookedDesign(slotItem) {
+    let titleDate = slotItem.type === 'group' 
+      ? `${getMonthDay(slotItem.days[0].dateObj)} and ${getMonthDay(slotItem.days[1].dateObj)}`
+      : getMonthDay(slotItem.days[0].dateObj);
+
+    const sharedDesign = slotItem.days.find(d => d.design)?.design || 'Design details unavailable';
+
+    const sheet = document.getElementById('bottom-sheet');
+    sheet.className = 'bottom-sheet'; 
+    
+    sheet.innerHTML = `
+      <div class="form-header">
+        <h3>${titleDate}</h3>
+        <button class="close-btn" onclick="closeSheet()">×</button>
+      </div>
+      <div style="text-align:center; padding: 10px 0 20px;">
+        <div style="display:inline-flex; align-items:center; justify-content:center; width:56px; height:56px; border-radius:50%; background:var(--tag-book-bg); color:var(--tag-book-txt); margin-bottom:20px;">
+          <svg width="28" height="28" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
+          </svg>
+        </div>
+        <h4 style="margin:0 0 8px 0; font-size:18px; color:var(--text-main);">Slot Currently Booked</h4>
+        <p style="margin:0; color:var(--text-muted); font-size:15px;">Booked Design:</p>
+        <p style="margin:5px 0 0 0; font-size:18px; font-weight:600; color:var(--primary);">${sharedDesign}</p>
+      </div>
+    `;
+    document.getElementById('booking-sheet-overlay').classList.add('active');
+  }
+
+  function openSheet(slotItem, clickedDay) {
+    currentSelectedSlot = slotItem; 
+    
+    let titleDate = slotItem.type === 'group' 
+      ? `${getMonthDay(slotItem.days[0].dateObj)} and ${getMonthDay(slotItem.days[1].dateObj)}`
+      : getMonthDay(slotItem.days[0].dateObj);
+
+    const sharedSpecial = slotItem.days.find(d => d.specialName)?.specialName || null;
+
+    const sheet = document.getElementById('bottom-sheet');
+    sheet.className = 'bottom-sheet'; 
+    
+    let warningHtml = '';
+    if (slotItem.type === 'group') {
+      if (clickedDay.dateStr === slotItem.days[1].dateStr) {
+        let submitDeadline = new Date(slotItem.days[0].dateObj);
+        submitDeadline.setDate(submitDeadline.getDate() - 1);
+        warningHtml = `
+          <div class="warning-banner form-stagger" style="display:block; animation-delay: 0.05s;">
+            ⚠️ <strong>Note:</strong> 2-day slot selected. Designs must be submitted before <strong>${getMonthDay(submitDeadline)}</strong> to ensure hindolo is ready on time.
+          </div>
+        `;
+      }
+    }
+
+    let designInputClass = sharedSpecial ? 'is-special-input' : '';
+
+    sheet.innerHTML = `
+      <div class="form-header">
+        <h3>Book: ${titleDate}</h3>
+        <button class="close-btn" onclick="closeSheet()">×</button>
+      </div>
+      
+      <div id="sheet-form-content">
+        ${warningHtml}
+
+        <div class="form-group form-stagger" style="animation-delay: 0.1s">
+          <label>Name <span class="req-ast">*</span></label>
+          <input type="text" id="bk-name" placeholder="John Doe" oninput="this.classList.remove('input-error'); this.nextElementSibling.style.display='none';" />
+          <div class="error-msg" id="err-name">Name is required</div>
+        </div>
+        
+        <div class="form-group form-stagger" style="animation-delay: 0.15s">
+          <label>Phone Number <span class="req-ast">*</span></label>
+          <input type="tel" id="bk-phone" placeholder="021 123 4567" oninput="this.classList.remove('input-error'); this.nextElementSibling.style.display='none';" />
+          <div class="error-msg" id="err-phone">Phone number is required</div>
+        </div>
+        
+        <div class="form-group form-stagger" style="animation-delay: 0.2s">
+          <label>Email</label>
+          <input type="email" id="bk-email" placeholder="john@example.com" />
+        </div>
+        
+        <div class="form-group form-stagger" style="animation-delay: 0.25s">
+          <label>Hindola Design <span class="req-ast">*</span></label>
+          <input type="text" id="bk-design" class="${designInputClass}"
+            ${sharedSpecial ? `value="${sharedSpecial}" disabled` : 'placeholder="e.g. Lotus Theme, Floral Ring" oninput="this.classList.remove(\'input-error\'); this.nextElementSibling.style.display=\'none\';"'} 
+          />
+          <div class="error-msg" id="err-design">Design concept is required</div>
+        </div>
+        
+        <div class="form-stagger" style="animation-delay: 0.3s">
+          <button class="btn" id="btn-init-book" onclick="showTerms()">Review and Book</button>
+        </div>
+      </div>
+
+      <!-- T and C Area -->
+      <div id="tc-area" style="display:none;">
+        <div class="tc-container">
+          <p class="form-stagger" style="animation-delay: 0.05s; margin-top:0; font-weight:600; color: var(--text-main);">Please acknowledge rules to complete booking:</p>
+          <div class="tc-item form-stagger" style="animation-delay: 0.1s">
+            <input type="checkbox" id="tc1" onchange="checkTerms()">
+            <label for="tc1">I will not glue or screw directly onto the boards.</label>
+          </div>
+          <div class="tc-item form-stagger" style="animation-delay: 0.15s">
+            <input type="checkbox" id="tc2" onchange="checkTerms()">
+            <label for="tc2">I understand I must avoid duplicate designs to maintain uniqueness.</label>
+          </div>
+          <div class="tc-item form-stagger" style="animation-delay: 0.2s">
+            <input type="checkbox" id="tc3" onchange="checkTerms()">
+            <label for="tc3">I agree to submit the boards 1 day before my selected date.</label>
+          </div>
+        </div>
+        <div class="form-stagger" style="animation-delay: 0.25s">
+          <button class="btn" id="btn-final-book" disabled onclick="submitBooking()">Confirm Booking</button>
+        </div>
+      </div>
+    `;
+
+    document.getElementById('booking-sheet-overlay').classList.add('active');
+  }
+
+  window.closeSheet = function() {
+    document.getElementById('booking-sheet-overlay').classList.remove('active');
+    document.querySelectorAll('.slot-selected').forEach(el => el.classList.remove('slot-selected'));
+  }
+
+  window.showTerms = function() {
+    let isValid = true;
+    
+    const checkField = (id) => {
+      const input = document.getElementById('bk-' + id);
+      const err = document.getElementById('err-' + id);
+      if (input && !input.disabled && !input.value.trim()) {
+        input.classList.add('input-error');
+        err.style.display = 'block';
+        isValid = false;
+      }
+    };
+
+    checkField('name');
+    checkField('phone');
+    checkField('design');
+
+    if (!isValid) return;
+
+    document.getElementById('btn-init-book').style.display = 'none';
+    document.getElementById('bottom-sheet').classList.add('is-fullscreen');
+    document.getElementById('tc-area').style.display = 'block';
+
+    setTimeout(() => {
+        document.getElementById('bottom-sheet').scrollTo({ top: document.getElementById('bottom-sheet').scrollHeight, behavior: 'smooth' });
+    }, 100);
+  }
+
+  window.checkTerms = function() {
+    const t1 = document.getElementById('tc1').checked;
+    const t2 = document.getElementById('tc2').checked;
+    const t3 = document.getElementById('tc3').checked;
+    
+    let allChecked = false;
+    if (t1) {
+      if (t2) {
+        if (t3) {
+          allChecked = true;
+        }
+      }
+    }
+    
+    document.getElementById('btn-final-book').disabled = !allChecked;
+  }
+
+  window.submitBooking = async function() {
+    const btn = document.getElementById('btn-final-book');
+    btn.innerText = "Submitting..."; btn.disabled = true;
+
+    try {
+      for (const day of currentSelectedSlot.days) {
+        const payload = {
+          date: day.dateStr, 
+          name: document.getElementById('bk-name').value,
+          phone: document.getElementById('bk-phone').value, 
+          email: document.getElementById('bk-email').value,
+          design: document.getElementById('bk-design').value
+        };
+
+        await fetch(API_POST_BOOK, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+        updateSlotStatus(day.dateStr, payload.design);
+      }
+      
+      const sheet = document.getElementById('bottom-sheet');
+      sheet.innerHTML = `
+        <div class="form-header" style="border:none; margin-bottom:0; padding-bottom:0;">
+          <div></div>
+          <button class="close-btn" onclick="closeSheet()">×</button>
+        </div>
+        <div style="text-align:center; padding: 0 20px 30px; display:flex; flex-direction:column; justify-content:center;">
+          <div style="font-size: 56px; margin-bottom: 20px;">🎉</div>
+          <h2 style="color: var(--acc-green); margin-bottom: 12px;">Booking Confirmed!</h2>
+          <p style="color: var(--text-main); font-size:17px; font-weight:600; margin-bottom: 15px;">Your slot has been successfully reserved.</p>
+          <p style="color: var(--text-muted); font-size:15px; line-height:1.5; margin-bottom: 30px;">Our hindola sanchalak will reach out to you when boards are ready to be picked up.</p>
+          <div style="background: var(--tag-book-bg); padding: 15px; border-radius: 8px; font-size: 13px; color: var(--text-muted); text-align: left; border: 1px solid var(--border);">
+            <strong>Need to make a change?</strong><br>
+            If you have made any errors, please reach out to Bhavik Hirani to make changes.
+          </div>
+        </div>
+      `;
+      
+    } catch (error) {
+      alert("Error communicating with booking server. Please try again.");
+      btn.innerText = "Confirm Booking"; btn.disabled = false;
+    }
+  }
+
+  function updateSlotStatus(dateStr, designText) {
+    slotsData.forEach(slotItem => {
+      slotItem.days.forEach(day => { 
+        if(day.dateStr === dateStr) { 
+          day.booked = true; 
+          day.design = designText; 
+        } 
+      });
+    });
+    renderCalendar();
+  }
+
+  // --- Safe Init ---
+  function initHindolaApp() {
+    if (window.hindolaInitialized) return; 
+    window.hindolaInitialized = true;
+    loadData();
+    resetIdleTimer();
+  }
+
+  if (document.readyState === 'complete' || document.readyState === 'interactive') {
+    setTimeout(initHindolaApp, 1);
+  } else {
+    document.addEventListener('DOMContentLoaded', initHindolaApp);
+    window.addEventListener('load', initHindolaApp);
+  }
+</script>

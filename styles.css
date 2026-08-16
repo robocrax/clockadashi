@@ -1,0 +1,525 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+html, body {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    font-family: 'Roboto', 'Google Sans', 'Inter', sans-serif;
+}
+
+body {
+    background-color: #000;
+    color: #fff;
+    transition: background-color 0.3s ease;
+}
+
+body.progressbar-1day {
+    background-color: #830300;
+}
+
+body.progressbar-4days {
+    background: linear-gradient(135deg, #000 0%, #2d0033 100%);
+}
+
+body.progressbar-day {
+    background-color: #ed6d19;
+}
+
+.noscript-fallback {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100vw;
+    height: 100vh;
+    font-size: 24px;
+    background-color: #000;
+    color: #fff;
+    font-weight: bold;
+}
+
+.container {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    overflow: hidden;
+}
+
+.content-wrapper {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    overflow: hidden;
+    max-width: 100vw;
+}
+
+.event-section {
+    text-align: center;
+    margin: 2vh 2vw 1.5vh 2vw;
+    font-size: clamp(16px, 4vw, 48px);
+    font-weight: 700;
+    flex-shrink: 0;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.3em;
+    justify-content: center;
+    line-height: 1.2;
+    max-height: 30vh;
+    overflow: hidden;
+}
+
+.clock-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    flex: 1;
+    width: 100%;
+    max-width: 100vw;
+    padding: 0;
+    overflow: hidden;
+}
+
+.time-display {
+    font-family: 'Roboto', 'Google Sans', 'Inter', sans-serif;
+    font-weight: 900;
+    font-size: clamp(40px, 20vw, 60vh);
+    line-height: 1.05;
+    white-space: nowrap;
+    text-align: center;
+    letter-spacing: -0.02em;
+    margin: 0;
+    padding: 0;
+    display: block;
+}
+
+.date-display {
+    font-size: clamp(14px, 3.5vw, 36px);
+    font-weight: 400;
+    margin-top: 0.5vh;
+    margin-bottom: 0;
+    opacity: 0.7;
+    white-space: nowrap;
+    text-align: center;
+}
+
+.progress-container {
+    width: 100%;
+    height: auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 1.5vh 2vw 2vh 2vw;
+    overflow: hidden;
+    flex-shrink: 0;
+    max-width: 100vw;
+    gap: 1.5vh;
+}
+
+.countdown-item {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5vh;
+}
+
+.countdown-text {
+    font-size: clamp(12px, 2.5vw, 24px);
+    font-weight: 400;
+    opacity: 0.9;
+    text-align: center;
+}
+
+.progress-bar {
+    width: 100%;
+    max-width: 75vw;
+    height: 8px;
+    background-color: rgba(255, 255, 255, 0.2);
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.progress-bar-fill {
+    height: 100%;
+    background-color: rgba(255, 255, 255, 0.8);
+    width: 0%;
+    transition: width 0.3s linear;
+    border-radius: 4px;
+}
+
+.progress-label {
+    text-align: center;
+    margin-top: 0.5vh;
+    font-size: clamp(10px, 2vw, 16px);
+    font-weight: 400;
+    opacity: 0.8;
+}
+
+/* Fullscreen styles */
+::-webkit-scrollbar {
+    display: none;
+}
+
+/* Prevent text selection for better UX */
+.container {
+    user-select: none;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+}
+
+/* Responsive adjustments */
+@media (orientation: portrait) {
+    .time-display {
+        font-size: clamp(40px, 18vw, 70vh);
+    }
+
+    .event-section {
+        font-size: clamp(12px, 3.5vw, 32px);
+    }
+
+    .date-display {
+        font-size: clamp(10px, 2.5vw, 20px);
+    }
+}
+
+@media (orientation: landscape) {
+    .time-display {
+        font-size: clamp(40px, 22vw, 60vh);
+    }
+
+    .event-section {
+        font-size: clamp(20px, 6.5vw, 120px);
+    }
+
+    .date-display {
+        font-size: clamp(16px, 5vw, 90px);
+    }
+
+    .countdown-text {
+        font-size: clamp(12px, 3.5vw, 34px);
+    }
+}
+
+/* Late-Rendered Hidden Music Overlay Framework */
+.music-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background-color: rgba(0, 0, 0, 0.75);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+    opacity: 1;
+    transition: opacity 0.2s ease, visibility 0.2s ease;
+}
+
+.music-overlay.hidden {
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+}
+
+.music-card {
+    background: rgba(20, 20, 20, 0.9);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    width: 90vw;
+    max-width: 480px;
+    height: 70vh;
+    border-radius: 16px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    box-shadow: 0 25px 50px rgba(0,0,0,0.6);
+}
+
+.music-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 18px 20px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.music-header h3 {
+    font-size: 16px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+}
+
+.close-btn {
+    background: none;
+    border: none;
+    color: rgba(255, 255, 255, 0.5);
+    font-size: 26px;
+    cursor: pointer;
+    line-height: 1;
+}
+
+.close-btn:hover {
+    color: #fff;
+}
+
+.track-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 15px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.track-item {
+    display: flex;
+    align-items: center;
+    padding: 12px;
+    border-radius: 8px;
+    cursor: pointer;
+    background: rgba(255, 255, 255, 0.02);
+    gap: 15px;
+    transition: background 0.15s;
+}
+
+.track-item:hover {
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.track-item.active {
+    background: rgba(255, 255, 255, 0.12);
+    border-left: 4px solid #ed6d19;
+}
+
+.track-thumb {
+    width: 40px;
+    height: 40px;
+    border-radius: 6px;
+    object-fit: cover;
+    flex-shrink: 0;
+}
+
+.fallback-art {
+    width: 40px;
+    height: 40px;
+    border-radius: 6px;
+    background: rgba(255,255,255,0.07);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    flex-shrink: 0;
+}
+
+.artwork-frame {
+    width: 36px;
+    height: 36px;
+    border-radius: 4px;
+    background: rgba(255,255,255,0.1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    flex-shrink: 0;
+    overflow: hidden;
+}
+
+.track-details {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.track-title {
+    font-size: 14px;
+    font-weight: 700;
+    color: #fff;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.track-artist {
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.4);
+    margin-top: 2px;
+}
+
+.player-controls {
+    background: #0f0f0f;
+    padding: 15px 20px;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 15px;
+}
+
+.now-playing-bar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    overflow: hidden;
+    flex: 1;
+}
+
+.now-playing-info {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+#currentTrackTitle {
+    font-size: 13px;
+    font-weight: 700;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+#currentTrackArtist {
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.4);
+    margin-top: 1px;
+}
+
+.control-buttons button {
+    background: #fff;
+    color: #000;
+    border: none;
+    padding: 8px 18px;
+    font-size: 12px;
+    font-weight: 700;
+    border-radius: 20px;
+    cursor: pointer;
+}
+
+.control-buttons button:disabled {
+    opacity: 0.25;
+    cursor: not-allowed;
+}
+
+/* Custom Scrollbars */
+.track-list::-webkit-scrollbar {
+    width: 4px;
+}
+.track-list::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 2px;
+}
+
+/* DJ Ghanshyam Toast Notification Notification Layout */
+#musicToast {
+    visibility: hidden;
+    min-width: 280px;
+    background-color: rgba(237, 109, 25, 0.95);
+    color: #fff;
+    text-align: center;
+    border-radius: 30px;
+    padding: 12px 24px;
+    position: fixed;
+    z-index: 10000;
+    left: 50%;
+    bottom: 40px;
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: 0.3px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+    
+    /* Hardware acceleration optimization properties for budget chips */
+    transform: translate3d(-50%, 20px, 0);
+    opacity: 0;
+    will-change: transform, opacity;
+    transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.3s ease;
+}
+
+#musicToast.show {
+    visibility: visible;
+    transform: translate3d(-50%, 0, 0);
+    opacity: 1;
+}
+
+/* Optimization for Budget Android Boards */
+.music-card, .music-overlay {
+    /* Prevents expensive real-time redrawing when processing track listings */
+    transform: translateZ(0); 
+    backface-visibility: hidden;
+}
+
+.track-item img {
+    /* Forces the low-power chip to handle resizing via GPU instead of the main CPU */
+    will-change: transform;
+}
+
+/* Bottom-Right HUD Caching Component Layout */
+#musicDownloadHUD {
+    visibility: hidden;
+    position: fixed;
+    right: 25px;
+    bottom: 25px;
+    width: 260px;
+    background-color: rgba(20, 20, 20, 0.95);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: #fff;
+    border-radius: 12px;
+    padding: 14px 16px;
+    font-family: 'Roboto', sans-serif;
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.5);
+    z-index: 100000;
+    
+    /* Optimized rendering for low-power chip structures */
+    transform: translate3d(0, 30px, 0);
+    opacity: 0;
+    will-change: transform, opacity;
+    transition: transform 0.3s cubic-bezier(0.25, 1, 0.5, 1), opacity 0.3s ease;
+}
+
+#musicDownloadHUD.show {
+    visibility: visible;
+    transform: translate3d(0, 0, 0);
+    opacity: 1;
+}
+
+#hudText {
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.4px;
+    margin-bottom: 8px;
+    color: #ed6d19;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.hud-progress-container {
+    width: 100%;
+    height: 4px;
+    background-color: rgba(255, 255, 255, 0.1);
+    border-radius: 2px;
+    overflow: hidden;
+}
+
+#hudProgressBar {
+    height: 100%;
+    width: 0%;
+    background-color: #fff;
+    border-radius: 2px;
+    will-change: width;
+    transition: width 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
