@@ -12,12 +12,6 @@
 
   <div id="app">
 
-    <!-- Ekadashi progress strip: separate from today's event, top of screen -->
-    <div id="progressWrap" hidden>
-      <div id="progressLabel"></div>
-      <div id="progressTrack"><div id="progressFill"></div></div>
-    </div>
-
     <button id="fullscreenBtn" aria-label="Toggle fullscreen" title="Toggle fullscreen">
       <svg class="icon-expand" viewBox="0 0 24 24" width="24" height="24" aria-hidden="true">
         <path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
@@ -27,18 +21,24 @@
       </svg>
     </button>
 
+    <!-- Clock Stage: Centered, fills full stage, scaled dynamically -->
     <main id="clockStage">
       <div id="clock" aria-live="off">
         <span id="clockMain">--:--</span><span id="clockSeconds">--</span><span id="clockAmPm"></span>
       </div>
+    </main>
+
+    <!-- Bottom Left Corner: Info, Events, & Stacked Progress Bars -->
+    <div id="bottomLeftWidget">
       <div id="dateRow">&nbsp;</div>
       <div id="eventRow">
         <div id="eventList"></div>
         <span id="loadingIndicator" class="spinner" hidden></span>
       </div>
-    </main>
+      <div id="progressStack"></div>
+    </div>
 
-    <!-- Floating music player, bottom-right. Tap the card to reveal the full track list. -->
+    <!-- Floating music player, bottom-right. -->
     <div id="player">
       <div id="downloadStatus" hidden></div>
 

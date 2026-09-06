@@ -14,8 +14,6 @@
 
 * { box-sizing: border-box; }
 
-/* Robust hidden/shown toggling — do not rely on the [hidden] attribute alone,
-   some older Android WebViews mis-handle it on inline SVG. */
 .is-hidden { display: none !important; }
 [hidden] { display: none !important; }
 
@@ -38,39 +36,7 @@ html, body {
   overflow: hidden;
 }
 
-/* ---------- Ekadashi progress strip (separate from today's event) ---------- */
-#progressWrap {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  padding: clamp(8px, 1.2vh, 16px) clamp(16px, 3vw, 48px) 0;
-  z-index: 5;
-}
-
-#progressLabel {
-  font-size: clamp(0.75rem, 1.3vw, 1.05rem);
-  color: var(--ink-dim);
-  margin-bottom: 6px;
-  letter-spacing: 0.01em;
-}
-
-#progressTrack {
-  height: 4px;
-  background: var(--line);
-  border-radius: 2px;
-  overflow: hidden;
-}
-
-#progressFill {
-  height: 100%;
-  width: 0%;
-  background: var(--accent);
-  border-radius: 2px;
-  transition: width 0.6s ease;
-}
-
-/* ---------- Fullscreen toggle (generous touch target) ---------- */
+/* ---------- Fullscreen toggle ---------- */
 #fullscreenBtn {
   position: absolute;
   top: clamp(6px, 1vh, 14px);
@@ -89,17 +55,19 @@ html, body {
 }
 #fullscreenBtn:active { opacity: 0.85; }
 
-/* ---------- Clock stage: the hero. Full-bleed, no reserved whitespace. ---------- */
+/* ---------- Clock stage: dynamic auto-sizing hero ---------- */
 #clockStage {
-  height: 100%;
-  width: 100%;
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
   text-align: center;
-  padding: 1vh 2vw;
-  min-height: 0;
+  padding: 2vh 2vw;
+  z-index: 1;
 }
 
 #clock {
@@ -108,61 +76,104 @@ html, body {
   letter-spacing: -0.02em;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
+  display: inline-block;
 }
 
 #clockMain {
-  font-size: clamp(6rem, min(24vw, 32vh), 34rem);
+  font-size: 1em; /* Base size scaled via JS font-size adjustments on #clock */
 }
 
 #clockSeconds {
-  font-size: clamp(1.8rem, min(8vw, 10vh), 8.5rem);
+  font-size: 0.3em;
   color: var(--ink-dim);
   margin-left: 0.15em;
 }
 
 #clockAmPm {
-  font-size: clamp(1.1rem, min(3.2vw, 4vh), 3.4rem);
+  font-size: 0.2em;
   color: var(--ink-dim);
   margin-left: 0.25em;
   font-weight: 700;
   vertical-align: top;
 }
 
+/* ---------- Bottom-Left Widget Container ---------- */
+#bottomLeftWidget {
+  position: fixed;
+  left: clamp(12px, 2vw, 28px);
+  bottom: clamp(12px, 2vh, 28px);
+  z-index: 10;
+  max-width: min(90vw, 420px);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
 #dateRow {
-  margin-top: clamp(8px, 1.6vh, 22px);
-  font-size: clamp(1rem, 2.4vw, 2.4rem);
+  font-size: clamp(0.9rem, 1.8vw, 1.4rem);
   color: var(--ink-dim);
   font-weight: 500;
 }
 
 #eventRow {
-  margin-top: clamp(4px, 1vh, 14px);
   display: flex;
   align-items: center;
-  justify-content: center;
   gap: 12px;
-  max-width: 90vw;
 }
 
 #eventList {
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: flex-start;
   gap: 4px;
 }
 
 .eventLine {
-  font-size: clamp(1.1rem, 2.6vw, 2.6rem);
+  font-size: clamp(1.1rem, 2.2vw, 1.8rem);
   color: var(--accent);
   font-weight: 700;
 }
 
-/* When more than one event lands on the same day, ease off the size a touch */
 #eventList.compact .eventLine {
-  font-size: clamp(0.9rem, 1.9vw, 1.9rem);
+  font-size: clamp(0.9rem, 1.7vw, 1.3rem);
 }
 
-/* ---------- Loading spinner (data fetch only, never blocks the clock) ---------- */
+/* ---------- Progress Bars (Stacked) ---------- */
+#progressStack {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 4px;
+  width: 100%;
+}
+
+.progressItem {
+  width: 100%;
+}
+
+.progressLabel {
+  font-size: clamp(0.75rem, 1.2vw, 0.95rem);
+  color: var(--ink-dim);
+  margin-bottom: 4px;
+  letter-spacing: 0.01em;
+}
+
+.progressTrack {
+  height: 4px;
+  background: var(--line);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.progressFill {
+  height: 100%;
+  width: 0%;
+  background: var(--accent);
+  border-radius: 2px;
+  transition: width 0.6s ease;
+}
+
+/* ---------- Loading spinner ---------- */
 .spinner {
   width: 18px;
   height: 18px;
@@ -177,9 +188,7 @@ html, body {
 }
 @keyframes spin { to { transform: rotate(360deg); } }
 
-/* =========================================================================
-   Floating music player — bottom-right overlay, touch-optimized
-   ========================================================================= */
+/* ---------- Floating music player ---------- */
 #player {
   position: fixed;
   right: clamp(12px, 2vw, 28px);
@@ -201,7 +210,6 @@ html, body {
   border: 1px solid var(--line);
 }
 
-/* Track list panel — slides out above the card, collapsed by default */
 #trackListPanel {
   width: 100%;
   max-height: 60vh;
@@ -276,7 +284,6 @@ html, body {
 }
 .trackRow.playing .rowTitle { color: var(--accent); }
 
-/* Compact card */
 #playerCard {
   width: 100%;
   display: flex;
