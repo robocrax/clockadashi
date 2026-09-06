@@ -2,16 +2,22 @@
 :root {
   --bg: #0b0f1c;
   --bg-raise: #12182b;
+  --bg-raise-2: #1a2338;
   --ink: #f4efe4;
   --ink-dim: #838ea8;
   --accent: #e3a24c;
-  --line: rgba(244, 239, 228, 0.09);
-  --radius: 6px;
+  --line: rgba(244, 239, 228, 0.10);
+  --radius: 8px;
 
   --font: -apple-system, "Segoe UI", Roboto, "Noto Sans", system-ui, sans-serif;
 }
 
 * { box-sizing: border-box; }
+
+/* Robust hidden/shown toggling — do not rely on the [hidden] attribute alone,
+   some older Android WebViews mis-handle it on inline SVG. */
+.is-hidden { display: none !important; }
+[hidden] { display: none !important; }
 
 html, body {
   height: 100%;
@@ -29,8 +35,7 @@ html, body {
   position: relative;
   height: 100dvh;
   width: 100vw;
-  display: flex;
-  flex-direction: column;
+  overflow: hidden;
 }
 
 /* ---------- Ekadashi progress strip (separate from today's event) ---------- */
@@ -39,7 +44,7 @@ html, body {
   top: 0;
   left: 0;
   right: 0;
-  padding: clamp(10px, 1.4vh, 20px) clamp(16px, 3vw, 48px) 0;
+  padding: clamp(8px, 1.2vh, 16px) clamp(16px, 3vw, 48px) 0;
   z-index: 5;
 }
 
@@ -65,31 +70,35 @@ html, body {
   transition: width 0.6s ease;
 }
 
-/* ---------- Fullscreen toggle ---------- */
+/* ---------- Fullscreen toggle (generous touch target) ---------- */
 #fullscreenBtn {
   position: absolute;
-  top: clamp(10px, 1.4vh, 20px);
-  right: clamp(14px, 2.4vw, 40px);
+  top: clamp(6px, 1vh, 14px);
+  right: clamp(6px, 1vw, 14px);
   z-index: 6;
+  width: 56px;
+  height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   background: transparent;
   border: none;
   color: var(--ink-dim);
-  opacity: 0.35;
-  padding: 10px;
+  opacity: 0.4;
   cursor: pointer;
-  line-height: 0;
 }
-#fullscreenBtn:active { opacity: 0.8; }
+#fullscreenBtn:active { opacity: 0.85; }
 
-/* ---------- Clock stage: the hero ---------- */
+/* ---------- Clock stage: the hero. Full-bleed, no reserved whitespace. ---------- */
 #clockStage {
-  flex: 1;
+  height: 100%;
+  width: 100%;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   text-align: center;
-  padding: 0 4vw;
+  padding: 1vh 2vw;
   min-height: 0;
 }
 
@@ -102,17 +111,17 @@ html, body {
 }
 
 #clockMain {
-  font-size: clamp(5rem, 19vw, 24rem);
+  font-size: clamp(6rem, min(24vw, 32vh), 34rem);
 }
 
 #clockSeconds {
-  font-size: clamp(2rem, 7vw, 8rem);
+  font-size: clamp(1.8rem, min(8vw, 10vh), 8.5rem);
   color: var(--ink-dim);
   margin-left: 0.15em;
 }
 
 #clockAmPm {
-  font-size: clamp(1.2rem, 3vw, 3.2rem);
+  font-size: clamp(1.1rem, min(3.2vw, 4vh), 3.4rem);
   color: var(--ink-dim);
   margin-left: 0.25em;
   font-weight: 700;
@@ -120,56 +129,170 @@ html, body {
 }
 
 #dateRow {
-  margin-top: clamp(10px, 2vh, 28px);
-  font-size: clamp(1.1rem, 2.6vw, 2.6rem);
+  margin-top: clamp(8px, 1.6vh, 22px);
+  font-size: clamp(1rem, 2.4vw, 2.4rem);
   color: var(--ink-dim);
   font-weight: 500;
 }
 
 #eventRow {
-  margin-top: clamp(6px, 1.2vh, 16px);
-  font-size: clamp(1.2rem, 2.8vw, 2.8rem);
-  color: var(--accent);
-  font-weight: 700;
-  min-height: 1.4em;
+  margin-top: clamp(4px, 1vh, 14px);
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 12px;
+  max-width: 90vw;
 }
 
-#eventText:empty { display: none; }
+#eventList {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.eventLine {
+  font-size: clamp(1.1rem, 2.6vw, 2.6rem);
+  color: var(--accent);
+  font-weight: 700;
+}
+
+/* When more than one event lands on the same day, ease off the size a touch */
+#eventList.compact .eventLine {
+  font-size: clamp(0.9rem, 1.9vw, 1.9rem);
+}
 
 /* ---------- Loading spinner (data fetch only, never blocks the clock) ---------- */
 .spinner {
-  width: 0.7em;
-  height: 0.7em;
+  width: 18px;
+  height: 18px;
   border-radius: 50%;
   border: 3px solid var(--line);
   border-top-color: var(--accent);
   animation: spin 0.9s linear infinite;
+  flex-shrink: 0;
 }
 @media (prefers-reduced-motion: reduce) {
   .spinner { animation: none; opacity: 0.6; }
 }
 @keyframes spin { to { transform: rotate(360deg); } }
 
-/* ---------- Player bar ---------- */
+/* =========================================================================
+   Floating music player — bottom-right overlay, touch-optimized
+   ========================================================================= */
 #player {
-  position: relative;
-  flex-shrink: 0;
+  position: fixed;
+  right: clamp(12px, 2vw, 28px);
+  bottom: clamp(12px, 2vh, 28px);
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  width: min(92vw, 380px);
+}
+
+#downloadStatus {
+  margin-bottom: 8px;
+  font-size: 0.85rem;
+  color: var(--ink-dim);
+  background: var(--bg-raise);
+  padding: 6px 14px;
+  border-radius: 20px;
+  border: 1px solid var(--line);
+}
+
+/* Track list panel — slides out above the card, collapsed by default */
+#trackListPanel {
+  width: 100%;
+  max-height: 60vh;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  background: var(--bg-raise);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  margin-bottom: 10px;
+  transform-origin: bottom right;
+  transform: scale(0.92) translateY(10px);
+  opacity: 0;
+  pointer-events: none;
+  transition: transform 0.18s ease, opacity 0.18s ease;
+}
+#player.expanded #trackListPanel {
+  transform: scale(1) translateY(0);
+  opacity: 1;
+  pointer-events: auto;
+}
+@media (prefers-reduced-motion: reduce) {
+  #trackListPanel { transition: none; }
+}
+
+.trackRow {
   display: flex;
   align-items: center;
-  gap: clamp(10px, 1.6vw, 22px);
-  padding: clamp(10px, 1.6vh, 20px) clamp(16px, 3vw, 48px);
+  gap: 14px;
+  width: 100%;
+  padding: 16px 16px;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--line);
+  color: var(--ink);
+  text-align: left;
+  cursor: pointer;
+  min-height: 64px;
+}
+.trackRow:last-child { border-bottom: none; }
+.trackRow:active { background: var(--bg-raise-2); }
+
+.trackRow .rowArt, .trackRow .rowArtPlaceholder {
+  width: 44px;
+  height: 44px;
+  border-radius: 6px;
+  object-fit: cover;
+  flex-shrink: 0;
+  background: var(--bg);
+}
+.trackRow .rowArtPlaceholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--ink-dim);
+}
+
+.trackRow .rowText { min-width: 0; flex: 1; }
+.trackRow .rowTitle {
+  font-size: 1.05rem;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.trackRow .rowAuthor {
+  font-size: 0.85rem;
+  color: var(--ink-dim);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-top: 2px;
+}
+.trackRow.playing .rowTitle { color: var(--accent); }
+
+/* Compact card */
+#playerCard {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 14px;
   background: var(--bg-raise);
-  border-top: 1px solid var(--line);
-  min-height: clamp(64px, 10vh, 110px);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  cursor: pointer;
 }
 
 #trackArt, #trackArtPlaceholder {
-  width: clamp(40px, 6vh, 68px);
-  height: clamp(40px, 6vh, 68px);
-  border-radius: var(--radius);
+  width: 52px;
+  height: 52px;
+  border-radius: 6px;
   object-fit: cover;
   flex-shrink: 0;
   background: var(--bg);
@@ -179,16 +302,13 @@ html, body {
   align-items: center;
   justify-content: center;
   color: var(--ink-dim);
-  font-size: clamp(1.2rem, 2.4vh, 2rem);
+  font-size: 1.6rem;
 }
 
-#trackInfo {
-  flex: 1;
-  min-width: 0;
-}
+#trackInfo { flex: 1; min-width: 0; }
 
 #trackTitle {
-  font-size: clamp(0.95rem, 1.8vw, 1.4rem);
+  font-size: 1.05rem;
   font-weight: 700;
   white-space: nowrap;
   overflow: hidden;
@@ -196,7 +316,7 @@ html, body {
 }
 
 #trackAuthor {
-  font-size: clamp(0.75rem, 1.3vw, 1.05rem);
+  font-size: 0.85rem;
   color: var(--ink-dim);
   white-space: nowrap;
   overflow: hidden;
@@ -204,70 +324,17 @@ html, body {
   margin-top: 2px;
 }
 
-#seek {
-  width: 100%;
-  margin-top: 6px;
-  height: 3px;
-  -webkit-appearance: none;
-  appearance: none;
-  background: var(--line);
-  border-radius: 2px;
-  outline: none;
-}
-#seek::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  background: var(--accent);
-  cursor: pointer;
-}
-#seek::-moz-range-thumb {
-  width: 12px;
-  height: 12px;
-  border: none;
-  border-radius: 50%;
-  background: var(--accent);
-  cursor: pointer;
-}
-
-#playerControls {
+#playBtn {
+  flex-shrink: 0;
+  width: 56px;
+  height: 56px;
   display: flex;
   align-items: center;
-  gap: clamp(6px, 1vw, 14px);
-  flex-shrink: 0;
-}
-
-#playerControls button {
-  background: transparent;
-  border: none;
-  color: var(--ink);
-  padding: clamp(6px, 1.2vh, 12px);
-  cursor: pointer;
-  line-height: 0;
-}
-#playBtn {
-  color: var(--bg);
+  justify-content: center;
   background: var(--accent);
+  color: var(--bg);
+  border: none;
   border-radius: 50%;
-  padding: clamp(10px, 1.8vh, 16px);
+  cursor: pointer;
 }
-
-#downloadStatus {
-  position: absolute;
-  bottom: 100%;
-  right: clamp(16px, 3vw, 48px);
-  margin-bottom: 6px;
-  font-size: clamp(0.65rem, 1.1vw, 0.85rem);
-  color: var(--ink-dim);
-  background: var(--bg-raise);
-  padding: 3px 10px;
-  border-radius: 4px;
-  border: 1px solid var(--line);
-}
-
-#offlineNotice {
-  font-size: clamp(0.9rem, 1.8vw, 1.3rem);
-  color: var(--ink-dim);
-  font-weight: 500;
-}
+#playBtn:active { transform: scale(0.94); }

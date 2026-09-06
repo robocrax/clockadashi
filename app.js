@@ -24,17 +24,15 @@ const el = {
   clockSeconds: document.getElementById('clockSeconds'),
   clockAmPm: document.getElementById('clockAmPm'),
   dateRow: document.getElementById('dateRow'),
-  eventText: document.getElementById('eventText'),
+  eventList: document.getElementById('eventList'),
   loadingIndicator: document.getElementById('loadingIndicator'),
   progressWrap: document.getElementById('progressWrap'),
   progressLabel: document.getElementById('progressLabel'),
   progressFill: document.getElementById('progressFill'),
   fullscreenBtn: document.getElementById('fullscreenBtn'),
-  iconExpand: document.getElementById('iconExpand'),
-  iconCompress: document.getElementById('iconCompress'),
 };
 
-let eventsByDate = {};      // { 'YYYY-MM-DD': { name, type } }
+let eventsByDate = {};      // { 'YYYY-MM-DD': [{ name, type }, ...] } — a day can have more than one event
 let progressEvents = [];    // [{ dateKey, date, name }]
 let lastRenderedMinute = null;
 
@@ -98,7 +96,8 @@ function parseEventsCsv(csvText) {
     const y = Number(m[1]), mo = Number(m[2]), d = Number(m[3]);
     const key = dateKeyFromParts(y, mo, d);
 
-    byDate[key] = { name, type: type || '' };
+    if (!byDate[key]) byDate[key] = [];
+    byDate[key].push({ name, type: type || '' });
 
     if (type && type.toLowerCase() === 'progressbar') {
       progress.push({ dateKey: key, date: localMidnight(y, mo, d), name });
@@ -109,8 +108,17 @@ function parseEventsCsv(csvText) {
 
 function renderTodayEvent(now) {
   const key = dateKeyFromParts(now.getFullYear(), now.getMonth() + 1, now.getDate());
-  const ev = eventsByDate[key];
-  el.eventText.textContent = ev ? ev.name : '';
+  const events = eventsByDate[key] || [];
+
+  el.eventList.innerHTML = '';
+  el.eventList.classList.toggle('compact', events.length > 1);
+
+  events.forEach(ev => {
+    const line = document.createElement('div');
+    line.className = 'eventLine';
+    line.textContent = ev.name;
+    el.eventList.appendChild(line);
+  });
 }
 
 function renderProgressBar(now) {
@@ -142,7 +150,14 @@ function renderProgressBar(now) {
    ========================================================================= */
 function showLoading(withText) {
   el.loadingIndicator.hidden = false;
-  if (withText) el.eventText.textContent = withText;
+  if (withText) {
+    el.eventList.innerHTML = '';
+    el.eventList.classList.remove('compact');
+    const line = document.createElement('div');
+    line.className = 'eventLine';
+    line.textContent = withText;
+    el.eventList.appendChild(line);
+  }
 }
 function hideLoading() {
   el.loadingIndicator.hidden = true;
@@ -171,7 +186,7 @@ async function checkAndRefreshData() {
   if (!due && hasCache) return; // nothing to do yet
 
   if (!navigator.onLine) {
-    if (!hasCache) el.eventText.textContent = 'Offline — waiting for connection…';
+    if (!hasCache) showLoading('Offline — waiting for connection…');
     return;
   }
 
@@ -195,7 +210,7 @@ async function checkAndRefreshData() {
     if (window.ClockadashiPlayer) window.ClockadashiPlayer.setTracks(tracks);
   } catch (e) {
     console.warn('[clockadashi] data refresh failed, keeping previous cached version:', e);
-    if (!hasCache) el.eventText.textContent = 'Unable to load calendar (offline)';
+    if (!hasCache) showLoading('Unable to load calendar (offline)');
   } finally {
     hideLoading();
     lastRenderedMinute = null; // force re-render of date/event/progress on next tick
@@ -218,8 +233,8 @@ let lastInteraction = Date.now();
 
 function updateFullscreenIcon() {
   const isFs = !!document.fullscreenElement;
-  el.iconExpand.hidden = isFs;
-  el.iconCompress.hidden = !isFs;
+  el.fullscreenBtn.querySelector('.icon-expand').classList.toggle('is-hidden', isFs);
+  el.fullscreenBtn.querySelector('.icon-compress').classList.toggle('is-hidden', !isFs);
 }
 
 document.addEventListener('fullscreenchange', updateFullscreenIcon);

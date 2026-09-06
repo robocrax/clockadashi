@@ -1,32 +1,90 @@
 /* =========================================================================
    CLOCKADASHI — music player + offline media cache sync
+   Floating card (art + title + single play/pause button). Tapping the card
+   body reveals the full track list so the person can choose where to
+   start; tapping a track plays it from the beginning and collapses the
+   list back down. No seek bar — tracks always start fresh.
    ========================================================================= */
 const MEDIA_CACHE_NAME = 'clockadashi-media-v1';
 const LS_TRACKS_KEY = 'clockadashi_tracks_json';
 
 const pel = {
+  player: document.getElementById('player'),
+  card: document.getElementById('playerCard'),
   art: document.getElementById('trackArt'),
   artPlaceholder: document.getElementById('trackArtPlaceholder'),
   title: document.getElementById('trackTitle'),
   author: document.getElementById('trackAuthor'),
-  seek: document.getElementById('seek'),
   playBtn: document.getElementById('playBtn'),
-  iconPlay: document.getElementById('iconPlay'),
-  iconPause: document.getElementById('iconPause'),
-  prevBtn: document.getElementById('prevBtn'),
-  nextBtn: document.getElementById('nextBtn'),
   audio: document.getElementById('audioEl'),
   downloadStatus: document.getElementById('downloadStatus'),
+  listPanel: document.getElementById('trackListPanel'),
+  list: document.getElementById('trackList'),
 };
 
 let tracks = [];
 let currentIndex = 0;
-let isSeeking = false;
+let isExpanded = false;
 
 function sortTracks(list) {
   return [...list].sort((a, b) => (a.sort_id ?? 0) - (b.sort_id ?? 0));
 }
 
+/* ---------- expand / collapse the track list ---------- */
+function setExpanded(value) {
+  isExpanded = value;
+  pel.player.classList.toggle('expanded', isExpanded);
+  pel.card.setAttribute('aria-expanded', String(isExpanded));
+}
+
+pel.card.addEventListener('click', () => setExpanded(!isExpanded));
+pel.card.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setExpanded(!isExpanded); }
+});
+
+document.addEventListener('click', (e) => {
+  if (isExpanded && !e.target.closest('#player')) setExpanded(false);
+});
+
+/* ---------- track list rendering ---------- */
+function renderTrackList() {
+  pel.list.innerHTML = '';
+  tracks.forEach((t, i) => {
+    const row = document.createElement('button');
+    row.type = 'button';
+    row.className = 'trackRow' + (i === currentIndex ? ' playing' : '');
+    row.dataset.index = String(i);
+
+    let artHtml;
+    if (t.image) {
+      artHtml = `<img class="rowArt" src="${t.image}" alt="">`;
+    } else {
+      artHtml = `<div class="rowArtPlaceholder">&#9835;</div>`;
+    }
+
+    row.innerHTML = `
+      ${artHtml}
+      <div class="rowText">
+        <div class="rowTitle">${t.title || ''}</div>
+        <div class="rowAuthor">${t.author || ''}</div>
+      </div>
+    `;
+    row.addEventListener('click', (e) => {
+      e.stopPropagation();
+      loadTrack(i, true);
+      setExpanded(false);
+    });
+    pel.list.appendChild(row);
+  });
+}
+
+function highlightPlayingRow() {
+  pel.list.querySelectorAll('.trackRow').forEach(row => {
+    row.classList.toggle('playing', Number(row.dataset.index) === currentIndex);
+  });
+}
+
+/* ---------- playback ---------- */
 function loadTrack(index, autoplay) {
   if (!tracks.length) return;
   currentIndex = (index + tracks.length) % tracks.length;
@@ -45,7 +103,7 @@ function loadTrack(index, autoplay) {
   }
 
   pel.audio.src = t.path;
-  pel.seek.value = 0;
+  highlightPlayingRow();
 
   if (autoplay) {
     pel.audio.play().catch(() => {});
@@ -54,11 +112,12 @@ function loadTrack(index, autoplay) {
 
 function updatePlayIcon() {
   const playing = !pel.audio.paused && !pel.audio.ended;
-  pel.iconPlay.hidden = playing;
-  pel.iconPause.hidden = !playing;
+  pel.playBtn.querySelector('.icon-play').classList.toggle('is-hidden', playing);
+  pel.playBtn.querySelector('.icon-pause').classList.toggle('is-hidden', !playing);
 }
 
-pel.playBtn.addEventListener('click', () => {
+pel.playBtn.addEventListener('click', (e) => {
+  e.stopPropagation();
   if (!tracks.length) return;
   if (pel.audio.paused) {
     pel.audio.play().catch(() => {});
@@ -67,25 +126,9 @@ pel.playBtn.addEventListener('click', () => {
   }
 });
 
-pel.prevBtn.addEventListener('click', () => loadTrack(currentIndex - 1, true));
-pel.nextBtn.addEventListener('click', () => loadTrack(currentIndex + 1, true));
-
 pel.audio.addEventListener('play', updatePlayIcon);
 pel.audio.addEventListener('pause', updatePlayIcon);
 pel.audio.addEventListener('ended', () => loadTrack(currentIndex + 1, true));
-
-pel.audio.addEventListener('timeupdate', () => {
-  if (isSeeking || !pel.audio.duration) return;
-  pel.seek.value = String(Math.round((pel.audio.currentTime / pel.audio.duration) * 1000));
-});
-
-pel.seek.addEventListener('input', () => { isSeeking = true; });
-pel.seek.addEventListener('change', () => {
-  if (pel.audio.duration) {
-    pel.audio.currentTime = (Number(pel.seek.value) / 1000) * pel.audio.duration;
-  }
-  isSeeking = false;
-});
 
 /* =========================================================================
    Offline media cache sync
@@ -148,6 +191,7 @@ window.ClockadashiPlayer = {
   setTracks(list) {
     const wasEmpty = tracks.length === 0;
     tracks = sortTracks(list);
+    renderTrackList();
     if (wasEmpty && tracks.length) loadTrack(0, false);
     syncMediaCache(tracks);
   },
@@ -163,6 +207,7 @@ window.ClockadashiPlayer = {
     try {
       const list = JSON.parse(raw);
       tracks = sortTracks(list);
+      renderTrackList();
       if (tracks.length) loadTrack(0, false);
       syncMediaCache(tracks);
     } catch (e) {

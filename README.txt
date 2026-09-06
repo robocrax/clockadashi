@@ -76,6 +76,16 @@ FULLSCREEN BEHAVIOR — IMPORTANT CAVEAT
   built-in kiosk/lock-task mode, or wrapping this page in a small native
   WebView app — happy to help with any of those if needed.
 
+MUSIC PLAYER
+------------
+- Floating card, bottom-right corner: art, title, and a single play/pause
+  button (icons swap on the same button — no separate play and pause
+  buttons). No seek bar; tracks always start fresh.
+- Tap anywhere on the card body (not the play/pause button) to slide out
+  the full track list, in the same order as tracks.json. Tap any track
+  to start it from the beginning and the list collapses back down. Tap
+  anywhere outside the card also collapses it.
+
 DESIGN NOTES
 ------------
 - Palette is a deep indigo-night background with warm ivory text and a

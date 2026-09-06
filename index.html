@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <title>Clockadashi</title>
 <link rel="manifest" href="manifest.json">
-<meta name="theme-color" content="#0b1020">
+<meta name="theme-color" content="#0b0f1c">
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -19,10 +19,10 @@
     </div>
 
     <button id="fullscreenBtn" aria-label="Toggle fullscreen" title="Toggle fullscreen">
-      <svg id="iconExpand" viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
+      <svg class="icon-expand" viewBox="0 0 24 24" width="24" height="24" aria-hidden="true">
         <path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
       </svg>
-      <svg id="iconCompress" viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" hidden>
+      <svg class="icon-compress is-hidden" viewBox="0 0 24 24" width="24" height="24" aria-hidden="true">
         <path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
       </svg>
     </button>
@@ -33,33 +33,32 @@
       </div>
       <div id="dateRow">&nbsp;</div>
       <div id="eventRow">
-        <span id="eventText"></span>
+        <div id="eventList"></div>
         <span id="loadingIndicator" class="spinner" hidden></span>
       </div>
     </main>
 
-    <footer id="player">
-      <img id="trackArt" alt="" hidden>
-      <div id="trackArtPlaceholder">&#9835;</div>
-      <div id="trackInfo">
-        <div id="trackTitle">Loading music&hellip;</div>
-        <div id="trackAuthor"></div>
-        <input id="seek" type="range" min="0" max="1000" value="0" step="1" aria-label="Seek">
-      </div>
-      <div id="playerControls">
-        <button id="prevBtn" aria-label="Previous track">
-          <svg viewBox="0 0 24 24" width="20" height="20"><path d="M6 6v12M18 6l-9 6 9 6V6z" fill="currentColor"/></svg>
-        </button>
-        <button id="playBtn" aria-label="Play or pause">
-          <svg id="iconPlay" viewBox="0 0 24 24" width="26" height="26"><path d="M8 5v14l11-7z" fill="currentColor"/></svg>
-          <svg id="iconPause" viewBox="0 0 24 24" width="26" height="26" hidden><path d="M7 5h4v14H7zM13 5h4v14h-4z" fill="currentColor"/></svg>
-        </button>
-        <button id="nextBtn" aria-label="Next track">
-          <svg viewBox="0 0 24 24" width="20" height="20"><path d="M18 6v12M6 6l9 6-9 6V6z" fill="currentColor"/></svg>
-        </button>
-      </div>
+    <!-- Floating music player, bottom-right. Tap the card to reveal the full track list. -->
+    <div id="player">
       <div id="downloadStatus" hidden></div>
-    </footer>
+
+      <div id="trackListPanel">
+        <div id="trackList"></div>
+      </div>
+
+      <div id="playerCard" role="button" tabindex="0" aria-label="Show track list">
+        <img id="trackArt" alt="" hidden>
+        <div id="trackArtPlaceholder">&#9835;</div>
+        <div id="trackInfo">
+          <div id="trackTitle">Loading music&hellip;</div>
+          <div id="trackAuthor"></div>
+        </div>
+        <button id="playBtn" aria-label="Play or pause">
+          <svg class="icon-play" viewBox="0 0 24 24" width="26" height="26"><path d="M8 5v14l11-7z" fill="currentColor"/></svg>
+          <svg class="icon-pause is-hidden" viewBox="0 0 24 24" width="26" height="26"><path d="M7 5h4v14H7zM13 5h4v14h-4z" fill="currentColor"/></svg>
+        </button>
+      </div>
+    </div>
 
     <audio id="audioEl" preload="none"></audio>
 
