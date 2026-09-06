@@ -1,0 +1,273 @@
+/* ---------- Tokens ---------- */
+:root {
+  --bg: #0b0f1c;
+  --bg-raise: #12182b;
+  --ink: #f4efe4;
+  --ink-dim: #838ea8;
+  --accent: #e3a24c;
+  --line: rgba(244, 239, 228, 0.09);
+  --radius: 6px;
+
+  --font: -apple-system, "Segoe UI", Roboto, "Noto Sans", system-ui, sans-serif;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font);
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+}
+
+#app {
+  position: relative;
+  height: 100dvh;
+  width: 100vw;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ---------- Ekadashi progress strip (separate from today's event) ---------- */
+#progressWrap {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  padding: clamp(10px, 1.4vh, 20px) clamp(16px, 3vw, 48px) 0;
+  z-index: 5;
+}
+
+#progressLabel {
+  font-size: clamp(0.75rem, 1.3vw, 1.05rem);
+  color: var(--ink-dim);
+  margin-bottom: 6px;
+  letter-spacing: 0.01em;
+}
+
+#progressTrack {
+  height: 4px;
+  background: var(--line);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+#progressFill {
+  height: 100%;
+  width: 0%;
+  background: var(--accent);
+  border-radius: 2px;
+  transition: width 0.6s ease;
+}
+
+/* ---------- Fullscreen toggle ---------- */
+#fullscreenBtn {
+  position: absolute;
+  top: clamp(10px, 1.4vh, 20px);
+  right: clamp(14px, 2.4vw, 40px);
+  z-index: 6;
+  background: transparent;
+  border: none;
+  color: var(--ink-dim);
+  opacity: 0.35;
+  padding: 10px;
+  cursor: pointer;
+  line-height: 0;
+}
+#fullscreenBtn:active { opacity: 0.8; }
+
+/* ---------- Clock stage: the hero ---------- */
+#clockStage {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 0 4vw;
+  min-height: 0;
+}
+
+#clock {
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+#clockMain {
+  font-size: clamp(5rem, 19vw, 24rem);
+}
+
+#clockSeconds {
+  font-size: clamp(2rem, 7vw, 8rem);
+  color: var(--ink-dim);
+  margin-left: 0.15em;
+}
+
+#clockAmPm {
+  font-size: clamp(1.2rem, 3vw, 3.2rem);
+  color: var(--ink-dim);
+  margin-left: 0.25em;
+  font-weight: 700;
+  vertical-align: top;
+}
+
+#dateRow {
+  margin-top: clamp(10px, 2vh, 28px);
+  font-size: clamp(1.1rem, 2.6vw, 2.6rem);
+  color: var(--ink-dim);
+  font-weight: 500;
+}
+
+#eventRow {
+  margin-top: clamp(6px, 1.2vh, 16px);
+  font-size: clamp(1.2rem, 2.8vw, 2.8rem);
+  color: var(--accent);
+  font-weight: 700;
+  min-height: 1.4em;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+#eventText:empty { display: none; }
+
+/* ---------- Loading spinner (data fetch only, never blocks the clock) ---------- */
+.spinner {
+  width: 0.7em;
+  height: 0.7em;
+  border-radius: 50%;
+  border: 3px solid var(--line);
+  border-top-color: var(--accent);
+  animation: spin 0.9s linear infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .spinner { animation: none; opacity: 0.6; }
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ---------- Player bar ---------- */
+#player {
+  position: relative;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: clamp(10px, 1.6vw, 22px);
+  padding: clamp(10px, 1.6vh, 20px) clamp(16px, 3vw, 48px);
+  background: var(--bg-raise);
+  border-top: 1px solid var(--line);
+  min-height: clamp(64px, 10vh, 110px);
+}
+
+#trackArt, #trackArtPlaceholder {
+  width: clamp(40px, 6vh, 68px);
+  height: clamp(40px, 6vh, 68px);
+  border-radius: var(--radius);
+  object-fit: cover;
+  flex-shrink: 0;
+  background: var(--bg);
+}
+#trackArtPlaceholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--ink-dim);
+  font-size: clamp(1.2rem, 2.4vh, 2rem);
+}
+
+#trackInfo {
+  flex: 1;
+  min-width: 0;
+}
+
+#trackTitle {
+  font-size: clamp(0.95rem, 1.8vw, 1.4rem);
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+#trackAuthor {
+  font-size: clamp(0.75rem, 1.3vw, 1.05rem);
+  color: var(--ink-dim);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-top: 2px;
+}
+
+#seek {
+  width: 100%;
+  margin-top: 6px;
+  height: 3px;
+  -webkit-appearance: none;
+  appearance: none;
+  background: var(--line);
+  border-radius: 2px;
+  outline: none;
+}
+#seek::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--accent);
+  cursor: pointer;
+}
+#seek::-moz-range-thumb {
+  width: 12px;
+  height: 12px;
+  border: none;
+  border-radius: 50%;
+  background: var(--accent);
+  cursor: pointer;
+}
+
+#playerControls {
+  display: flex;
+  align-items: center;
+  gap: clamp(6px, 1vw, 14px);
+  flex-shrink: 0;
+}
+
+#playerControls button {
+  background: transparent;
+  border: none;
+  color: var(--ink);
+  padding: clamp(6px, 1.2vh, 12px);
+  cursor: pointer;
+  line-height: 0;
+}
+#playBtn {
+  color: var(--bg);
+  background: var(--accent);
+  border-radius: 50%;
+  padding: clamp(10px, 1.8vh, 16px);
+}
+
+#downloadStatus {
+  position: absolute;
+  bottom: 100%;
+  right: clamp(16px, 3vw, 48px);
+  margin-bottom: 6px;
+  font-size: clamp(0.65rem, 1.1vw, 0.85rem);
+  color: var(--ink-dim);
+  background: var(--bg-raise);
+  padding: 3px 10px;
+  border-radius: 4px;
+  border: 1px solid var(--line);
+}
+
+#offlineNotice {
+  font-size: clamp(0.9rem, 1.8vw, 1.3rem);
+  color: var(--ink-dim);
+  font-weight: 500;
+}
