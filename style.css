@@ -14,6 +14,8 @@
 
 * { box-sizing: border-box; }
 
+/* Robust hidden/shown toggling — do not rely on the [hidden] attribute alone,
+   some older Android WebViews mis-handle it on inline SVG. */
 .is-hidden { display: none !important; }
 [hidden] { display: none !important; }
 
@@ -36,12 +38,12 @@ html, body {
   overflow: hidden;
 }
 
-/* ---------- Fullscreen toggle ---------- */
+/* ---------- Fullscreen toggle (generous touch target) ---------- */
 #fullscreenBtn {
   position: absolute;
   top: clamp(6px, 1vh, 14px);
   right: clamp(6px, 1vw, 14px);
-  z-index: 6;
+  z-index: 12;
   width: 56px;
   height: 56px;
   display: flex;
@@ -55,19 +57,26 @@ html, body {
 }
 #fullscreenBtn:active { opacity: 0.85; }
 
-/* ---------- Clock stage: dynamic auto-sizing hero ---------- */
+/* ---------- Clock stage: the hero. Full-bleed, no reserved whitespace.
+   #clock's font-size is set at runtime by app.js (fitClockToScreen), which
+   grows it until it would touch the fullscreen button or either bottom
+   corner, then backs off a few pixels. The value below is only a fallback
+   shown for an instant before that first measurement runs. ---------- */
 #clockStage {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  height: 100%;
+  width: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
+  padding: 8px;
+  min-height: 0;
+}
+
+#clockGroup {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
   text-align: center;
-  padding: 2vh 2vw;
-  z-index: 1;
 }
 
 #clock {
@@ -76,107 +85,30 @@ html, body {
   letter-spacing: -0.02em;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
-  display: inline-block;
+  font-size: 220px;
 }
 
-#clockMain {
-  font-size: 1em; /* Base size scaled via JS font-size adjustments on #clock */
-}
-
-#clockSeconds {
-  font-size: 0.3em;
-  color: var(--ink-dim);
-  margin-left: 0.15em;
-}
-
+#clockMain { font-size: 1em; }
+#clockSeconds { font-size: 0.28em; color: var(--ink-dim); margin-left: 0.15em; }
 #clockAmPm {
-  font-size: 0.2em;
+  font-size: 0.12em;
   color: var(--ink-dim);
   margin-left: 0.25em;
   font-weight: 700;
   vertical-align: top;
 }
 
-/* ---------- Bottom-Left Widget Container ---------- */
-#bottomLeftWidget {
-  position: fixed;
-  left: clamp(12px, 2vw, 28px);
-  bottom: clamp(12px, 2vh, 28px);
-  z-index: 10;
-  max-width: min(90vw, 420px);
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
 #dateRow {
-  font-size: clamp(0.9rem, 1.8vw, 1.4rem);
+  margin-top: 16px;
+  font-size: clamp(1rem, 2.2vw, 2.2rem);
   color: var(--ink-dim);
   font-weight: 500;
 }
 
-#eventRow {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-#eventList {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 4px;
-}
-
-.eventLine {
-  font-size: clamp(1.1rem, 2.2vw, 1.8rem);
-  color: var(--accent);
-  font-weight: 700;
-}
-
-#eventList.compact .eventLine {
-  font-size: clamp(0.9rem, 1.7vw, 1.3rem);
-}
-
-/* ---------- Progress Bars (Stacked) ---------- */
-#progressStack {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  margin-top: 4px;
-  width: 100%;
-}
-
-.progressItem {
-  width: 100%;
-}
-
-.progressLabel {
-  font-size: clamp(0.75rem, 1.2vw, 0.95rem);
-  color: var(--ink-dim);
-  margin-bottom: 4px;
-  letter-spacing: 0.01em;
-}
-
-.progressTrack {
-  height: 4px;
-  background: var(--line);
-  border-radius: 2px;
-  overflow: hidden;
-}
-
-.progressFill {
-  height: 100%;
-  width: 0%;
-  background: var(--accent);
-  border-radius: 2px;
-  transition: width 0.6s ease;
-}
-
 /* ---------- Loading spinner ---------- */
 .spinner {
-  width: 18px;
-  height: 18px;
+  width: 16px;
+  height: 16px;
   border-radius: 50%;
   border: 3px solid var(--line);
   border-top-color: var(--accent);
@@ -188,7 +120,79 @@ html, body {
 }
 @keyframes spin { to { transform: rotate(360deg); } }
 
-/* ---------- Floating music player ---------- */
+/* =========================================================================
+   Bottom-left corner: today's events, then Ekadashi countdown bars.
+   Plain text over the background — no card chrome, since this is purely
+   informational rather than interactive. Width is deliberately capped so
+   it never spans toward the music card's corner.
+   ========================================================================= */
+#cornerLeft {
+  position: fixed;
+  left: clamp(14px, 2.4vw, 40px);
+  bottom: clamp(12px, 2vh, 28px);
+  z-index: 8;
+  max-width: min(46vw, 420px);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+#eventList {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+}
+
+.eventLine {
+  font-size: clamp(1rem, 2vw, 1.9rem);
+  color: var(--accent);
+  font-weight: 700;
+  text-align: left;
+}
+
+#eventList.compact .eventLine {
+  font-size: clamp(0.85rem, 1.5vw, 1.4rem);
+}
+
+#progressList {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+}
+
+.progressItem { width: 100%; }
+
+.progressItemLabel {
+  font-size: clamp(0.7rem, 1.15vw, 1rem);
+  color: var(--ink-dim);
+  margin-bottom: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.progressItemTrack {
+  height: 4px;
+  background: var(--line);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.progressItemFill {
+  height: 100%;
+  background: var(--accent);
+  border-radius: 2px;
+  transition: width 0.6s ease;
+}
+
+/* =========================================================================
+   Floating music player — bottom-right overlay, touch-optimized
+   Auto-hides after a period of inactivity (see PLAYER_IDLE_HIDE_MS in
+   app.js); any tap anywhere brings it straight back.
+   ========================================================================= */
 #player {
   position: fixed;
   right: clamp(12px, 2vw, 28px);
@@ -198,6 +202,14 @@ html, body {
   flex-direction: column;
   align-items: flex-end;
   width: min(92vw, 380px);
+  transition: opacity 0.4s ease;
+}
+#player.idle-hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  #player { transition: none; }
 }
 
 #downloadStatus {
@@ -210,6 +222,7 @@ html, body {
   border: 1px solid var(--line);
 }
 
+/* Track list panel — slides out above the card, collapsed by default */
 #trackListPanel {
   width: 100%;
   max-height: 60vh;
@@ -284,6 +297,7 @@ html, body {
 }
 .trackRow.playing .rowTitle { color: var(--accent); }
 
+/* Compact card */
 #playerCard {
   width: 100%;
   display: flex;

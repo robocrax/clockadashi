@@ -195,6 +195,9 @@ window.ClockadashiPlayer = {
     if (wasEmpty && tracks.length) loadTrack(0, false);
     syncMediaCache(tracks);
   },
+  collapse() {
+    setExpanded(false);
+  },
 };
 
 /* =========================================================================

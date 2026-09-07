@@ -21,24 +21,26 @@
       </svg>
     </button>
 
-    <!-- Clock Stage: Centered, fills full stage, scaled dynamically -->
+    <!-- Clock is the only hero element; JS grows #clock to fill whatever
+         space is left once the two bottom corners are accounted for. -->
     <main id="clockStage">
-      <div id="clock" aria-live="off">
-        <span id="clockMain">--:--</span><span id="clockSeconds">--</span><span id="clockAmPm"></span>
+      <div id="clockGroup">
+        <div id="clock" aria-live="off">
+          <span id="clockMain">--:--</span><span id="clockSeconds">--</span><span id="clockAmPm"></span>
+        </div>
+        <div id="dateRow">&nbsp;</div>
       </div>
     </main>
 
-    <!-- Bottom Left Corner: Info, Events, & Stacked Progress Bars -->
-    <div id="bottomLeftWidget">
-      <div id="dateRow">&nbsp;</div>
-      <div id="eventRow">
-        <div id="eventList"></div>
-        <span id="loadingIndicator" class="spinner" hidden></span>
-      </div>
-      <div id="progressStack"></div>
+    <!-- Bottom-left: today's events, then any upcoming Ekadashi progress bars -->
+    <div id="cornerLeft">
+      <div id="eventList"></div>
+      <span id="loadingIndicator" class="spinner" hidden></span>
+      <div id="progressList"></div>
     </div>
 
-    <!-- Floating music player, bottom-right. -->
+    <!-- Bottom-right: floating music player. Tap the card to reveal the full
+         track list. Auto-hides after a couple of minutes of inactivity. -->
     <div id="player">
       <div id="downloadStatus" hidden></div>
 

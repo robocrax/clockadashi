@@ -1,11 +1,13 @@
 /* =========================================================================
    CLOCKADASHI — configurable constants (adjust freely)
    ========================================================================= */
-const PROGRESS_BAR_DAYS_BEFORE = 8;        // days before a "ProgressBar" event to start showing the progress strip
+const PROGRESS_BAR_DAYS_BEFORE = 8;        // days before a "ProgressBar" event to start showing its countdown bar
 const TIME_FORMAT_24H = false;             // true = 24h clock, false = 12h with AM/PM
 const DATA_REFRESH_INTERVAL_MS = 24 * 60 * 60 * 1000; // how often to re-fetch events.csv / tracks.json
 const DATA_CHECK_INTERVAL_MS = 5 * 60 * 1000;         // how often we check whether a refresh is due (no network call unless due)
 const IDLE_FULLSCREEN_MS = 2 * 60 * 1000;             // re-enter fullscreen after this much idle time
+const PLAYER_IDLE_HIDE_MS = 2 * 60 * 1000;            // hide the music card after this much inactivity
+const CLOCK_FIT_MARGIN_PX = 20;                       // buffer the clock stops short of neighbouring elements by
 const EVENTS_CSV_URL = 'events.csv';
 const TRACKS_JSON_URL = 'tracks.json';
 
@@ -20,21 +22,25 @@ const MONTHS = ['January','February','March','April','May','June','July','August
    DOM refs
    ========================================================================= */
 const el = {
+  clockGroup: document.getElementById('clockGroup'),
+  clockEl: document.getElementById('clock'),
   clockMain: document.getElementById('clockMain'),
   clockSeconds: document.getElementById('clockSeconds'),
   clockAmPm: document.getElementById('clockAmPm'),
   dateRow: document.getElementById('dateRow'),
+  cornerLeft: document.getElementById('cornerLeft'),
   eventList: document.getElementById('eventList'),
   loadingIndicator: document.getElementById('loadingIndicator'),
-  progressWrap: document.getElementById('progressWrap'),
-  progressLabel: document.getElementById('progressLabel'),
-  progressFill: document.getElementById('progressFill'),
+  progressList: document.getElementById('progressList'),
   fullscreenBtn: document.getElementById('fullscreenBtn'),
+  player: document.getElementById('player'),
+  playerCard: document.getElementById('playerCard'),
 };
 
 let eventsByDate = {};      // { 'YYYY-MM-DD': [{ name, type }, ...] } — a day can have more than one event
 let progressEvents = [];    // [{ dateKey, date, name }]
 let lastRenderedMinute = null;
+let lastCornerSignature = '';
 
 /* =========================================================================
    Clock
@@ -60,6 +66,7 @@ function renderClock() {
     renderDate(now);
     renderTodayEvent(now);
     renderProgressBar(now);
+    maybeRefitClock();
   }
 }
 
@@ -122,28 +129,91 @@ function renderTodayEvent(now) {
 }
 
 function renderProgressBar(now) {
-  if (!progressEvents.length) {
-    el.progressWrap.hidden = true;
-    return;
-  }
-  const today = localMidnight(now.getFullYear(), now.getMonth() + 1, now.getDate());
-  let best = null;
+  el.progressList.innerHTML = '';
+  if (!progressEvents.length) return;
+
+  // Hourly (not day-level) granularity, so the bar creeps forward through
+  // the day instead of only jumping once at midnight.
+  const totalWindowHours = PROGRESS_BAR_DAYS_BEFORE * 24;
+  const matches = [];
+
   for (const pe of progressEvents) {
-    const diffDays = Math.round((pe.date - today) / 86400000);
-    if (diffDays >= 0 && diffDays <= PROGRESS_BAR_DAYS_BEFORE) {
-      if (!best || diffDays < best.diffDays) best = { ...pe, diffDays };
+    const diffHours = (pe.date - now) / 3600000;
+    // window opens PROGRESS_BAR_DAYS_BEFORE days out, and closes at the end
+    // of the event's own day (i.e. once the next day begins)
+    if (diffHours <= totalWindowHours && diffHours > -24) {
+      const percent = Math.max(0, Math.min(100, ((totalWindowHours - diffHours) / totalWindowHours) * 100));
+      matches.push({ ...pe, percent });
     }
   }
-  if (!best) {
-    el.progressWrap.hidden = true;
-    return;
-  }
-  const percent = ((PROGRESS_BAR_DAYS_BEFORE - best.diffDays) / PROGRESS_BAR_DAYS_BEFORE) * 100;
-  const dayLabel = best.diffDays === 0 ? 'Today' : `${best.diffDays} day${best.diffDays === 1 ? '' : 's'} away`;
-  el.progressLabel.textContent = `${best.name} — ${dayLabel}`;
-  el.progressFill.style.width = `${Math.max(0, Math.min(100, percent))}%`;
-  el.progressWrap.hidden = false;
+
+  // soonest event (highest percent) first
+  matches.sort((a, b) => b.percent - a.percent);
+
+  matches.forEach(m => {
+    const item = document.createElement('div');
+    item.className = 'progressItem';
+    const dayName = WEEKDAYS[m.date.getDay()];
+    item.innerHTML =
+      '<div class="progressItemLabel">' + m.name + ' — ' + dayName + '</div>' +
+      '<div class="progressItemTrack"><div class="progressItemFill" style="width:' + m.percent + '%"></div></div>';
+    el.progressList.appendChild(item);
+  });
 }
+
+/* =========================================================================
+   Clock sizing — grow #clock until it would touch a neighbouring element,
+   then back off a small margin. Re-run whenever the viewport changes or
+   the bottom-left info block's content changes size.
+   ========================================================================= */
+function debounce(fn, waitMs) {
+  let t;
+  return (...args) => {
+    clearTimeout(t);
+    t = setTimeout(() => fn(...args), waitMs);
+  };
+}
+
+function fitClockToScreen() {
+  const vw = window.innerWidth;
+  const vh = window.innerHeight;
+
+  const topReserve = el.fullscreenBtn.getBoundingClientRect().height + CLOCK_FIT_MARGIN_PX * 2;
+  const bottomReserve = Math.max(
+    el.cornerLeft.getBoundingClientRect().height,
+    el.playerCard.getBoundingClientRect().height
+  ) + CLOCK_FIT_MARGIN_PX * 2;
+
+  const maxWidth = Math.max(100, vw - CLOCK_FIT_MARGIN_PX * 2);
+  const maxHeight = Math.max(100, vh - topReserve - bottomReserve);
+
+  let lo = 40, hi = 1000, best = lo;
+  for (let i = 0; i < 12; i++) {
+    const mid = (lo + hi) / 2;
+    el.clockEl.style.fontSize = mid + 'px';
+    const rect = el.clockGroup.getBoundingClientRect();
+    if (rect.width <= maxWidth && rect.height <= maxHeight) {
+      best = mid;
+      lo = mid;
+    } else {
+      hi = mid;
+    }
+  }
+  el.clockEl.style.fontSize = Math.max(40, best - 4) + 'px';
+}
+
+function maybeRefitClock() {
+  const sig = el.cornerLeft.textContent + '|' + el.progressList.children.length;
+  if (sig !== lastCornerSignature) {
+    lastCornerSignature = sig;
+    requestAnimationFrame(fitClockToScreen);
+  }
+}
+
+const debouncedFit = debounce(fitClockToScreen, 150);
+window.addEventListener('resize', debouncedFit);
+window.addEventListener('orientationchange', debouncedFit);
+document.addEventListener('fullscreenchange', () => setTimeout(fitClockToScreen, 60));
 
 /* =========================================================================
    Loading indicator
@@ -228,8 +298,22 @@ async function checkAndRefreshData() {
    ========================================================================= */
 let lastInteraction = Date.now();
 ['pointerdown', 'keydown'].forEach(evt => {
-  document.addEventListener(evt, () => { lastInteraction = Date.now(); }, { passive: true });
+  document.addEventListener(evt, () => {
+    lastInteraction = Date.now();
+    showPlayer();
+  }, { passive: true });
 });
+
+function showPlayer() {
+  el.player.classList.remove('idle-hidden');
+}
+
+function hidePlayerIfIdle() {
+  if ((Date.now() - lastInteraction) >= PLAYER_IDLE_HIDE_MS) {
+    if (window.ClockadashiPlayer) window.ClockadashiPlayer.collapse();
+    el.player.classList.add('idle-hidden');
+  }
+}
 
 function updateFullscreenIcon() {
   const isFs = !!document.fullscreenElement;
@@ -260,6 +344,7 @@ setInterval(() => {
   if (!document.fullscreenElement && (Date.now() - lastInteraction) >= IDLE_FULLSCREEN_MS) {
     document.documentElement.requestFullscreen().catch(() => {});
   }
+  hidePlayerIfIdle();
 }, 30000);
 
 /* =========================================================================
@@ -274,6 +359,7 @@ if ('serviceWorker' in navigator) {
 applyEventsFromCache();
 setInterval(renderClock, 1000);
 renderClock();
+requestAnimationFrame(fitClockToScreen);
 
 checkAndRefreshData();
 setInterval(checkAndRefreshData, DATA_CHECK_INTERVAL_MS);

@@ -42,11 +42,17 @@ HOW IT WORKS
 KEY SETTINGS (top of app.js)
 -----------------------------
   PROGRESS_BAR_DAYS_BEFORE   — how many days before a "ProgressBar" event
-                               the countdown strip appears (default: 8)
+                               its countdown bar appears (default: 8)
   TIME_FORMAT_24H            — false = 12h clock with AM/PM (default),
                                true = 24h clock
   DATA_REFRESH_INTERVAL_MS   — how often events.csv/tracks.json are
                                re-checked (default: 24 hours)
+  PLAYER_IDLE_HIDE_MS        — how long the music card stays visible with
+                               no touch input before it hides (default:
+                               2 minutes). Any tap anywhere brings it back.
+  CLOCK_FIT_MARGIN_PX        — the buffer the auto-sized clock leaves
+                               before it would touch the fullscreen icon
+                               or either bottom corner (default: 20px)
 
 events.csv FORMAT
 ------------------
@@ -55,10 +61,15 @@ events.csv FORMAT
 
 - "Type" is optional — leave it blank for a normal day-of event that just
   shows the name on the day itself.
+- A day can have more than one row/event — all of them are listed,
+  stacked, in the bottom-left corner.
 - Use "ProgressBar" as the Type for events that should also get a
-  countdown strip in the days leading up to them (Ekadashis). The
-  countdown strip is shown separately from the current day's own event
-  text — it never replaces or competes with it.
+  countdown bar in the days leading up to them (Ekadashis). It's shown
+  separately, under the current day's own event(s), and progresses
+  hour by hour (not just once at midnight). More than one can be active
+  at once — they stack, soonest on top, each labelled with the day of
+  the week it lands on (e.g. "Kamla Ekadashi — Friday") rather than a
+  day count.
 
 FULLSCREEN BEHAVIOR — IMPORTANT CAVEAT
 ----------------------------------------
@@ -85,6 +96,23 @@ MUSIC PLAYER
   the full track list, in the same order as tracks.json. Tap any track
   to start it from the beginning and the list collapses back down. Tap
   anywhere outside the card also collapses it.
+- The whole card hides itself after PLAYER_IDLE_HIDE_MS (default 2
+  minutes) of no touch input, so it can't sit there distracting from the
+  clock if the room is empty. Any tap anywhere on screen brings it back
+  and resets the timer.
+
+LAYOUT
+------
+- Bottom-left corner: today's event(s), then any active Ekadashi
+  countdown bar(s) underneath. Plain text over the background — no
+  card/border — since it's informational, not interactive. Its width is
+  capped so it never reaches toward the music card's corner.
+- Bottom-right corner: the music player (see above).
+- Everything else is the clock. On load, and whenever the screen size
+  or the bottom-left content changes, app.js measures the fullscreen
+  icon and both bottom corners, then grows the clock's font size (via
+  a quick binary search) until it's as large as possible while stopping
+  CLOCK_FIT_MARGIN_PX short of touching any of them.
 
 DESIGN NOTES
 ------------
@@ -97,12 +125,9 @@ DESIGN NOTES
   on an always-on low-power kiosk, this avoids an extra network
   dependency/cache entry and renders instantly, and system sans fonts
   are already clean and highly legible at large sizes.
-- No cards, shadows or rounded-card kit anywhere — flat surfaces and a
-  single hairline divider above the player bar, so nothing competes
-  with the clock.
-- The Ekadashi countdown strip sits at the very top of the screen with
-  a thin bar, deliberately separate in position and style from the
-  current day's event line, which sits directly under the clock.
+- No cards, shadows or rounded-card kit anywhere except the interactive
+  music player — the bottom-left info block is plain text, so nothing
+  but the clock competes for attention.
 
 NOT YET BUILT (per our conversation — flagged for later)
 -----------------------------------------------------------
