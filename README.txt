@@ -1,138 +1,165 @@
-CLOCKADASHI — deployment notes
-================================
+CLOCKADASHI — wall clock with Ekadashi countdowns and offline music
+=====================================================================
 
-FOLDER STRUCTURE (upload all of this as-is to your web server, no build step):
+Static site, no build step. Hosted on GitHub Pages (clock.nehal.boo):
+pushing to main deploys it, and the tablet picks the change up by itself.
 
-  clockadashi/
-    index.html
-    style.css
-    app.js
-    player.js
-    sw.js
-    manifest.json
-    events.csv
-    tracks.json
-    music/
-      fagva.mp3   fagva.jpg
-      jamta.mp3   jamta.jpg
-      aaj_mare.mp3
-      naath.mp3   naath.jpg
-      chesta.mp3
+  index.html     markup
+  style.css      all styling
+  app.js         clock, calendar, alert colours, offline data, updates, activity log
+  player.js      music: mini player, full player, offline song library
+  sw.js          service worker (makes everything work without Wi-Fi)
+  manifest.json  lets Android install it as a full-screen app
+  icons/         app icons
+  events.csv     the calendar
+  tracks.json    the song list
+  music/         songs (.mp3) and artwork (.jpg)
+  server/        song server for the Search tab (YouTube Music + yt-dlp);
+                 runs on a computer or the tablet, not on GitHub Pages
 
-Add your actual .mp3/.jpg files into music/ — that folder is currently empty.
-Paths must match tracks.json exactly (case-sensitive on most servers).
 
-HOW IT WORKS
-------------
-- First load MUST have an internet connection once, so the service worker
-  can cache the app shell and the player can start downloading music.
-  After that first successful load, the whole thing works fully offline,
-  including after a power cycle/reboot.
-- events.csv and tracks.json are re-fetched at most every 24 hours
-  (DATA_REFRESH_INTERVAL_MS in app.js). If a refresh fails (offline), the
-  previously cached version keeps being used — nothing goes blank.
-- If the device reconnects to the internet, a refresh is attempted
-  immediately (in addition to the 24h schedule).
-- Music files download one at a time in the background after load, to
-  keep memory/network usage low on the device. A small "Downloading
-  offline music X/Y" note appears near the player bar while this happens,
-  and disappears once done. Tracks no longer listed in tracks.json are
-  automatically deleted from the offline cache.
+WHAT THE SCREEN DOES
+--------------------
+Today's events across the top, the clock filling the middle, the date
+under it, countdown bars along the bottom, music player bottom-right.
 
-KEY SETTINGS (top of app.js)
------------------------------
-  PROGRESS_BAR_DAYS_BEFORE   — how many days before a "ProgressBar" event
-                               its countdown bar appears (default: 8)
-  TIME_FORMAT_24H            — false = 12h clock with AM/PM (default),
-                               true = 24h clock
-  DATA_REFRESH_INTERVAL_MS   — how often events.csv/tracks.json are
-                               re-checked (default: 24 hours)
-  PLAYER_IDLE_HIDE_MS        — how long the music card stays visible with
-                               no touch input before it hides (default:
-                               2 minutes). Any tap anywhere brings it back.
-  CLOCK_FIT_MARGIN_PX        — the buffer the auto-sized clock leaves
-                               before it would touch the fullscreen icon
-                               or either bottom corner (default: 20px)
+The whole background is the Ekadashi alert (any "ProgressBar" event):
 
-events.csv FORMAT
-------------------
+  most days            black
+  4 to 2 days before   purple, deepening each day
+  the day before       red (#830300), bar label reads "Tomorrow is ..."
+  the day itself       saffron (#ed6d19), event name large at the top
+
+A countdown bar appears 8 days before each ProgressBar event and fills
+hour by hour. If two overlap, the soonest gets the big bar and the later
+one a smaller bar underneath.
+
+
+EVENTS.CSV
+----------
   Date,Event,Type
-  2026-06-11,Kamla Ekadashi,ProgressBar
+  2026-10-22,Pashankusha Ekadashi,ProgressBar
+  2026-10-21,Dashera
 
-- "Type" is optional — leave it blank for a normal day-of event that just
-  shows the name on the day itself.
-- A day can have more than one row/event — all of them are listed,
-  stacked, in the bottom-left corner.
-- Use "ProgressBar" as the Type for events that should also get a
-  countdown bar in the days leading up to them (Ekadashis). It's shown
-  separately, under the current day's own event(s), and progresses
-  hour by hour (not just once at midnight). More than one can be active
-  at once — they stack, soonest on top, each labelled with the day of
-  the week it lands on (e.g. "Kamla Ekadashi — Friday") rather than a
-  day count.
+- Type "ProgressBar" = countdown bar + coloured days. Leave it blank for
+  an event that just shows on its day.
+- Several events on one day are all listed; a ProgressBar event leads.
+- Names containing commas need quotes: 2026-01-01,"Name, with comma"
 
-FULLSCREEN BEHAVIOR — IMPORTANT CAVEAT
+
+MUSIC
+-----
+Always visible bottom-right. Tap the song name or artwork to open the full
+player (YouTube Music style): big artwork, seek bar, previous/next,
+shuffle, repeat (all / one / off), volume, and the "Up next" list where a
+tick means the song is saved on the tablet. The Android back button or
+the arrow top-left closes it; it also closes itself after 90 seconds.
+
+To add a song: put the .mp3 (and a .jpg) in music/, add an entry to
+tracks.json, push. Within 30 minutes the tablet downloads it in the
+background and keeps it for offline. Removing an entry removes the song
+from the tablet too. Replacing a file under the same name is detected
+within a day.
+
+  { "id": "fagva", "sort_id": 10, "path": "music/fagva.mp3",
+    "title": "Fagva", "author": "SSTW Festival of Golden Hearts",
+    "image": "music/fagva.jpg" }
+
+Square art and 16:9 video thumbnails both work.
+
+
+SEARCH AND SAVE SONGS FROM YOUTUBE MUSIC
 ----------------------------------------
-- Tapping anywhere on screen requests fullscreen.
-- The small icon (top-right) explicitly exits fullscreen when tapped.
-- After 2 minutes of no touch input while NOT in fullscreen, the app
-  tries to re-enter fullscreen automatically.
+The full player's Search tab finds songs (or videos) on YouTube Music.
+Tapping one sends its link to the song server, which downloads the audio
+with yt-dlp; the clock then saves it like any other song and plays it.
+It stays through refreshes, restarts and Wi-Fi drops. Songs added this
+way have a bin icon in "Up next": tap it twice to remove the song.
 
-  Caveat: browsers require a fullscreen request to originate from a
-  direct user tap/click. The 2-minute idle auto-re-fullscreen call is
-  included as requested and works on some Android WebViews/kiosk
-  browsers, but stock Chrome may silently block it since no tap
-  triggered it. If it doesn't work reliably on your Youzhan tablet,
-  the robust fix is launching Chrome with a kiosk flag, using Android's
-  built-in kiosk/lock-task mode, or wrapping this page in a small native
-  WebView app — happy to help with any of those if needed.
+The song server (server/ytdl_server.py) must be reachable from the
+browser as http://localhost:8790 (an https page may only call plain http
+on localhost).
 
-MUSIC PLAYER
-------------
-- Floating card, bottom-right corner: art, title, and a single play/pause
-  button (icons swap on the same button — no separate play and pause
-  buttons). No seek bar; tracks always start fresh.
-- Tap anywhere on the card body (not the play/pause button) to slide out
-  the full track list, in the same order as tracks.json. Tap any track
-  to start it from the beginning and the list collapses back down. Tap
-  anywhere outside the card also collapses it.
-- The whole card hides itself after PLAYER_IDLE_HIDE_MS (default 2
-  minutes) of no touch input, so it can't sit there distracting from the
-  clock if the room is empty. Any tap anywhere on screen brings it back
-  and resets the timer.
+  First time, on the computer (Python 3.10+, plus Deno or Node.js):
+    cd server
+    python -m venv .venv
+    .venv\Scripts\pip install -r requirements.txt
+  Start it:
+    .venv\Scripts\python ytdl_server.py
 
-LAYOUT
-------
-- Bottom-left corner: today's event(s), then any active Ekadashi
-  countdown bar(s) underneath. Plain text over the background — no
-  card/border — since it's informational, not interactive. Its width is
-  capped so it never reaches toward the music card's corner.
-- Bottom-right corner: the music player (see above).
-- Everything else is the clock. On load, and whenever the screen size
-  or the bottom-left content changes, app.js measures the fullscreen
-  icon and both bottom corners, then grows the clock's font size (via
-  a quick binary search) until it's as large as possible while stopping
-  CLOCK_FIT_MARGIN_PX short of touching any of them.
+  For the tablet, either:
+  - with the tablet on USB or wireless debugging:
+        adb reverse tcp:8790 tcp:8790
+  - or run the same script on the tablet itself (Termux), or
+  - give it another address over https: open the clock once with
+        ?songserver=https://YOUR-SERVER&songtoken=SECRET
+    and start the server with
+        --host 0.0.0.0 --token SECRET --origin https://clock.nehal.boo
 
-DESIGN NOTES
-------------
-- Palette is a deep indigo-night background with warm ivory text and a
-  marigold/saffron accent — a nod to the devotional subject matter
-  (Ekadashi, poojas) rather than a generic dark-mode UI. Dark background
-  also helps a 24/7-running screen and keeps the bright bold clock as
-  the clear visual anchor from a distance.
-- Deliberately uses the system font stack (no downloaded webfont) —
-  on an always-on low-power kiosk, this avoids an extra network
-  dependency/cache entry and renders instantly, and system sans fonts
-  are already clean and highly legible at large sizes.
-- No cards, shadows or rounded-card kit anywhere except the interactive
-  music player — the bottom-left info block is plain text, so nothing
-  but the clock competes for attention.
+Chrome may ask once to let the clock reach "apps and services on this
+device"; allow it. Downloads also stay in server/downloads (safe to
+delete; the tablet keeps its own copies). When downloads start failing,
+YouTube has changed something: update yt-dlp with
+    .venv\Scripts\pip install -U "yt-dlp[default]"
 
-NOT YET BUILT (per our conversation — flagged for later)
------------------------------------------------------------
-- IVR-style loudspeaker button (hold to record from mic, release to
-  play back at max volume) — intentionally left out of this version.
-  Note for later: a web page can only control the in-app media volume,
-  not the Android system volume — true system-volume control needs a
-  native wrapper, not just Chrome.
+
+OFFLINE AND WI-FI DROPS
+-----------------------
+- The first visit needs internet. After that the clock, calendar, alert
+  colours and every saved song keep working with no network, including
+  after a reboot.
+- Songs download in 1 MB pieces. If Wi-Fi drops mid-download, only the
+  piece in flight is lost and it resumes from there when Wi-Fi returns.
+  The top-left corner shows "Saving songs for offline" while this runs.
+- "Offline" in the top-left corner means the server can't be reached.
+  The app checks every 2 minutes (every 30 seconds while offline) and
+  catches up as soon as it's back.
+- The calendar and song list are re-checked every 30 minutes.
+- Android can clear website storage when space runs low. Installing the
+  app (below) makes it far more likely Chrome keeps it permanently.
+
+
+UPDATES
+-------
+The tablet re-checks the app files every 30 minutes. When something
+changed it reloads itself, but only once nobody has touched the screen
+for 90 seconds and no song is playing.
+
+First deploy of this version: the old version can't update itself, so
+reload the page on the tablet twice (the first reload installs it, the
+second shows it).
+
+
+INSTALLING ON THE TABLET
+------------------------
+Chrome menu > Add to Home screen > Install. Open it from the home screen
+icon: it runs full screen with no browser bar, with no tap needed. In a
+normal Chrome tab, tap anywhere to go full screen; the faint icon in the
+top-right corner leaves full screen. The screen is kept awake while the
+app is open.
+
+
+TESTING AND DIAGNOSTICS
+-----------------------
+- Preview any moment by adding ?now= to the address, for example
+  clock.nehal.boo/?now=2026-10-21T20:00 shows the red day before
+  Pashankusha Ekadashi. The clock runs on from there. Nothing is saved.
+- Long-press the clock (1.5 s) for diagnostics: network history, which
+  songs are saved, storage used, screen size, browser version, and an
+  activity log (Wi-Fi lost/back, screen on/off, updates, errors) that
+  survives reboots. From remote DevTools: CK.readLog() or CK.diag().
+
+
+SETTINGS
+--------
+Top of app.js:
+  COUNTDOWN_DAYS     8    days before a ProgressBar event its bar appears
+  APPROACH_DAYS      4    purple tint starts this many days before
+  PAD_HOURS          true 08:05:09 instead of 8:05:09 (keeps width fixed)
+  SYNC_EVERY_MIN     30   calendar / song list / app update checks
+  RELOAD_IDLE_SEC    90   idle time before an update is applied
+Top of player.js:
+  CLOSE_AFTER_SEC    90   full player closes itself after this long
+  SONG_SERVER        http://localhost:8790   default song server address
+
+If you change sw.js, bump VERSION inside it.

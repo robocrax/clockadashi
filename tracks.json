@@ -20,11 +20,11 @@
         "sort_id": 30,
         "path": "music/aaj_mare.mp3", 
         "title": "Aaj Mare Orde Re", 
-        "author": "Kundaldham", 
-        "image": "" 
+        "author": "Kundaldham",
+        "image": "music/aaj_mare.jpg"
     },
-    { 
-        "id": "naath", 
+    {
+        "id": "naath",
         "sort_id": 40,
         "path": "music/naath.mp3", 
         "title": "Naath Nirakhya Chhe", 
@@ -35,8 +35,8 @@
         "id": "chesta", 
         "sort_id": 99,
         "path": "music/chesta.mp3", 
-        "title": "Chesta", 
-        "author": "Kundaldham", 
-        "image": "" 
+        "title": "Chesta",
+        "author": "Kundaldham",
+        "image": "music/chesta.jpg"
     }
 ]

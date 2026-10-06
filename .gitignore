@@ -1,0 +1,7 @@
+# song server: local Python environment and downloaded songs
+server/.venv/
+server/downloads/
+__pycache__/
+
+# browser test artefacts
+.playwright-mcp/

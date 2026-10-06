@@ -1,361 +1,676 @@
-/* ---------- Tokens ---------- */
-:root {
-  --bg: #0b0f1c;
-  --bg-raise: #12182b;
-  --bg-raise-2: #1a2338;
-  --ink: #f4efe4;
-  --ink-dim: #838ea8;
-  --accent: #e3a24c;
-  --line: rgba(244, 239, 228, 0.10);
-  --radius: 8px;
+/* =========================================================================
+   Clockadashi — the whole wall is the Ekadashi reminder:
+   black most days, a slow purple drift as one approaches, red (#830300)
+   the day before, saffron (#ed6d19) on the day itself.
+   The clock is the one bold thing; everything else stays quiet.
+   ========================================================================= */
 
-  --font: -apple-system, "Segoe UI", Roboto, "Noto Sans", system-ui, sans-serif;
+:root {
+  --ink: #ffffff;
+  --ink-2: rgba(255, 255, 255, 0.72);
+  --ink-3: rgba(255, 255, 255, 0.45);
+  --bar-track: rgba(255, 255, 255, 0.18);
+  --bar-fill: #ffffff;
+  --surface: rgba(255, 255, 255, 0.09);
+  --surface-press: rgba(255, 255, 255, 0.18);
+  --edge: max(14px, 2.4vw);
+  --font: Roboto, "Google Sans", Inter, system-ui, -apple-system, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
 }
 
 * { box-sizing: border-box; }
-
-/* Robust hidden/shown toggling — do not rely on the [hidden] attribute alone,
-   some older Android WebViews mis-handle it on inline SVG. */
-.is-hidden { display: none !important; }
 [hidden] { display: none !important; }
 
 html, body {
   height: 100%;
   margin: 0;
-  padding: 0;
   overflow: hidden;
-  background: var(--bg);
+}
+
+body {
+  background: #000;
   color: var(--ink);
   font-family: var(--font);
-  -webkit-tap-highlight-color: transparent;
+  -webkit-font-smoothing: antialiased;
+  -webkit-user-select: none;
   user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+  touch-action: manipulation;
 }
 
-#app {
-  position: relative;
-  height: 100dvh;
-  width: 100vw;
-  overflow: hidden;
+/* Alert states (set by app.js). The purple approach gradient is applied inline. */
+body.s-tomorrow {
+  background-color: #830300;
+  --surface: rgba(0, 0, 0, 0.2);
+  --surface-press: rgba(0, 0, 0, 0.32);
+  --bar-track: rgba(0, 0, 0, 0.3);
+}
+body.s-today {
+  background-color: #ed6d19;
+  --ink-2: rgba(255, 255, 255, 0.94);  /* saffron is light: dimmed white would wash out */
+  --surface: rgba(0, 0, 0, 0.16);
+  --surface-press: rgba(0, 0, 0, 0.28);
+  --bar-track: rgba(0, 0, 0, 0.2);
 }
 
-/* ---------- Fullscreen toggle (generous touch target) ---------- */
-#fullscreenBtn {
-  position: absolute;
-  top: clamp(6px, 1vh, 14px);
-  right: clamp(6px, 1vw, 14px);
-  z-index: 12;
-  width: 56px;
-  height: 56px;
+button { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+
+.ibtn {
+  flex: none;
+  width: 48px;
+  height: 48px;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: transparent;
-  border: none;
-  color: var(--ink-dim);
-  opacity: 0.4;
-  cursor: pointer;
-}
-#fullscreenBtn:active { opacity: 0.85; }
-
-/* ---------- Clock stage: the hero. Full-bleed, no reserved whitespace.
-   #clock's font-size is set at runtime by app.js (fitClockToScreen), which
-   grows it until it would touch the fullscreen button or either bottom
-   corner, then backs off a few pixels. The value below is only a fallback
-   shown for an instant before that first measurement runs. ---------- */
-#clockStage {
-  height: 100%;
-  width: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 8px;
-  min-height: 0;
-}
-
-#clockGroup {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  text-align: center;
-}
-
-#clock {
-  font-weight: 800;
-  line-height: 1;
-  letter-spacing: -0.02em;
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-  font-size: 220px;
-}
-
-#clockMain { font-size: 1em; }
-#clockSeconds { font-size: 0.28em; color: var(--ink-dim); margin-left: 0.15em; }
-#clockAmPm {
-  font-size: 0.12em;
-  color: var(--ink-dim);
-  margin-left: 0.25em;
-  font-weight: 700;
-  vertical-align: top;
-}
-
-#dateRow {
-  margin-top: 16px;
-  font-size: clamp(1rem, 2.2vw, 2.2rem);
-  color: var(--ink-dim);
-  font-weight: 500;
-}
-
-/* ---------- Loading spinner ---------- */
-.spinner {
-  width: 16px;
-  height: 16px;
+  margin: 0;
+  padding: 0;
+  border: 0;
   border-radius: 50%;
-  border: 3px solid var(--line);
-  border-top-color: var(--accent);
-  animation: spin 0.9s linear infinite;
-  flex-shrink: 0;
+  background: transparent;
+  cursor: pointer;
+  position: relative;
 }
-@media (prefers-reduced-motion: reduce) {
-  .spinner { animation: none; opacity: 0.6; }
+.ibtn svg { width: 28px; height: 28px; fill: currentColor; }
+.ibtn:active { background: var(--surface-press); }
+
+/* A ring around play/pause while a song is still loading. */
+.ibtn.is-buffering::after {
+  content: "";
+  position: absolute;
+  top: -3px; right: -3px; bottom: -3px; left: -3px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  border-top-color: var(--ink);
+  animation: spin 0.9s linear infinite;
 }
 @keyframes spin { to { transform: rotate(360deg); } }
 
-/* =========================================================================
-   Bottom-left corner: today's events, then Ekadashi countdown bars.
-   Plain text over the background — no card chrome, since this is purely
-   informational rather than interactive. Width is deliberately capped so
-   it never spans toward the music card's corner.
-   ========================================================================= */
-#cornerLeft {
+.noscript {
   position: fixed;
-  left: clamp(14px, 2.4vw, 40px);
-  bottom: clamp(12px, 2vh, 28px);
-  z-index: 8;
-  max-width: min(46vw, 420px);
+  top: 0; right: 0; bottom: 0; left: 0;
   display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 10px;
-}
-
-#eventList {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 4px;
-}
-
-.eventLine {
-  font-size: clamp(1rem, 2vw, 1.9rem);
-  color: var(--accent);
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
   font-weight: 700;
-  text-align: left;
 }
 
-#eventList.compact .eventLine {
-  font-size: clamp(0.85rem, 1.5vw, 1.4rem);
+/* =========================================================================
+   Clock screen: events / clock / countdowns + music, as three grid rows.
+   app.js sizes the clock to fill whatever the middle row is given.
+   ========================================================================= */
+#screen {
+  position: fixed;
+  top: 0; right: 0; bottom: 0; left: 0;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  padding: max(10px, 1.8vh) var(--edge) max(12px, 2.6vh);
 }
 
-#progressList {
+#top {
+  min-height: 44px;  /* keeps the clock clear of the corner status and button */
+  text-align: center;
+  font-weight: 800;
+  line-height: 1.1;
+  letter-spacing: -0.01em;
+  overflow-wrap: break-word;
+}
+.ev + .ev { margin-top: 0.1em; }
+.ev-minor { font-size: 0.56em; font-weight: 600; color: var(--ink-2); }
+body.s-today .ev-minor { color: var(--ink); }
+
+#clockArea {
+  min-height: 0;
   display: flex;
-  flex-direction: column;
-  gap: 10px;
-  width: 100%;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+#clockBlock { text-align: center; font-size: 200px; }
+#time {
+  font-weight: 900;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+#date {
+  font-size: 0.17em;
+  font-weight: 400;
+  line-height: 1.25;
+  color: var(--ink-2);
+  margin-top: 0.12em;
+  white-space: nowrap;
 }
 
-.progressItem { width: 100%; }
+#bottom {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-column-gap: var(--edge);
+  align-items: end;
+}
 
-.progressItemLabel {
-  font-size: clamp(0.7rem, 1.15vw, 1rem);
-  color: var(--ink-dim);
-  margin-bottom: 4px;
+/* ---- Countdown bars: the big one first, any later ones smaller ---------- */
+#bars { min-width: 0; }
+.cd + .cd { margin-top: max(10px, 1.8vh); }
+.cd-label {
+  font-size: clamp(16px, 2.6vw, 44px);
+  font-weight: 500;
+  line-height: 1.2;
+  margin-bottom: 0.4em;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
-
-.progressItemTrack {
-  height: 4px;
-  background: var(--line);
-  border-radius: 2px;
+body.s-tomorrow .cd:first-child .cd-label { font-weight: 700; }
+.cd-track {
+  height: clamp(12px, 2.6vh, 30px);
+  border-radius: 999px;
+  background: var(--bar-track);
   overflow: hidden;
 }
-
-.progressItemFill {
+.cd-fill {
   height: 100%;
-  background: var(--accent);
-  border-radius: 2px;
-  transition: width 0.6s ease;
+  width: 0;
+  border-radius: inherit;
+  background: var(--bar-fill);
+  transition: width 0.6s ease-out;
+}
+.cd-more .cd-label { font-size: clamp(13px, 1.8vw, 30px); color: var(--ink-2); }
+.cd-more .cd-track { height: clamp(8px, 1.4vh, 16px); }
+
+/* ---- Mini player: always visible, tap to open the full player ---------- */
+#mini {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: clamp(270px, 30vw, 440px);
+  height: clamp(64px, 9vh, 84px);
+  padding-right: 6px;
+  border-radius: 14px;
+  background: var(--surface);
+  overflow: hidden;
+}
+#miniOpen {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  padding: 0 0 0 clamp(8px, 1.1vh, 12px);
+  border: 0;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+#miniOpen:active { background: var(--surface-press); }
+.mini-art {
+  position: relative;
+  flex: none;
+  width: clamp(44px, 6.4vh, 60px);
+  height: clamp(44px, 6.4vh, 60px);
+  border-radius: 8px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.1);
+}
+.mini-art img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.art-ph {
+  position: absolute;
+  top: 0; right: 0; bottom: 0; left: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.art-ph svg { width: 50%; height: 50%; fill: var(--ink-3); }
+.mini-meta { flex: 1; min-width: 0; padding: 0 8px 0 12px; }
+.mini-title, .mini-sub {
+  display: block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.mini-title { font-size: clamp(15px, 1.5vw, 19px); font-weight: 600; }
+.mini-sub { font-size: clamp(12px, 1.15vw, 15px); color: var(--ink-2); margin-top: 2px; }
+.mini-progress {
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  height: 3px;
+  background: rgba(255, 255, 255, 0.14);
+  pointer-events: none;
+}
+.mini-progress i { display: block; height: 100%; width: 0; background: var(--ink); }
+
+/* ---- Corners: connection / saving status, full-screen toggle ----------- */
+#status {
+  position: fixed;
+  top: max(10px, 1.8vh);
+  left: var(--edge);
+  display: flex;
+  align-items: center;
+  height: 28px;
+  font-size: 14px;
+  color: var(--ink-2);
+  pointer-events: none;
+}
+#statusIcon { display: flex; margin-right: 6px; }
+#statusIcon svg { width: 18px; height: 18px; fill: currentColor; }
+#fsBtn {
+  position: fixed;
+  top: max(2px, 0.8vh);
+  right: max(2px, 0.8vw);
+  opacity: 0.35;
+}
+
+@media (orientation: portrait) {
+  #bottom { grid-template-columns: minmax(0, 1fr); grid-row-gap: 2vh; }
+  #mini { width: 100%; }
+  .cd-label { font-size: clamp(16px, 4vw, 40px); }
 }
 
 /* =========================================================================
-   Floating music player — bottom-right overlay, touch-optimized
-   Auto-hides after a period of inactivity (see PLAYER_IDLE_HIDE_MS in
-   app.js); any tap anywhere brings it straight back.
+   Full player, modelled on YouTube Music's now-playing screen: artwork-tinted
+   background, big artwork, seek bar, transport, volume, and the queue.
    ========================================================================= */
-#player {
+#fp {
+  --tint: hsl(28, 40%, 24%);
+  --ink-2: rgba(255, 255, 255, 0.72);  /* always dark, whatever the day's colour */
+  --ink-3: rgba(255, 255, 255, 0.45);
+  --surface-press: rgba(255, 255, 255, 0.18);
   position: fixed;
-  right: clamp(12px, 2vw, 28px);
-  bottom: clamp(12px, 2vh, 28px);
+  top: 0; right: 0; bottom: 0; left: 0;
   z-index: 10;
   display: flex;
   flex-direction: column;
-  align-items: flex-end;
-  width: min(92vw, 380px);
-  transition: opacity 0.4s ease;
+  background: #000;
+  color: #fff;
+  visibility: hidden;
+  transform: translateY(100%);
+  transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.25, 1), visibility 0s linear 0.3s;
 }
-#player.idle-hidden {
-  opacity: 0;
+#fp.open {
+  visibility: visible;
+  transform: none;
+  transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.25, 1), visibility 0s;
+}
+.fp-tint {
+  position: absolute;
+  top: 0; right: 0; bottom: 0; left: 0;
+  background: linear-gradient(180deg, var(--tint) 0%, rgba(0, 0, 0, 0) 80%);
   pointer-events: none;
 }
-@media (prefers-reduced-motion: reduce) {
-  #player { transition: none; }
-}
 
-#downloadStatus {
-  margin-bottom: 8px;
-  font-size: 0.85rem;
-  color: var(--ink-dim);
-  background: var(--bg-raise);
-  padding: 6px 14px;
-  border-radius: 20px;
-  border: 1px solid var(--line);
-}
-
-/* Track list panel — slides out above the card, collapsed by default */
-#trackListPanel {
-  width: 100%;
-  max-height: 60vh;
-  overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
-  background: var(--bg-raise);
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  margin-bottom: 10px;
-  transform-origin: bottom right;
-  transform: scale(0.92) translateY(10px);
-  opacity: 0;
-  pointer-events: none;
-  transition: transform 0.18s ease, opacity 0.18s ease;
-}
-#player.expanded #trackListPanel {
-  transform: scale(1) translateY(0);
-  opacity: 1;
-  pointer-events: auto;
-}
-@media (prefers-reduced-motion: reduce) {
-  #trackListPanel { transition: none; }
-}
-
-.trackRow {
+.fp-head {
+  position: relative;
+  flex: none;
   display: flex;
   align-items: center;
-  gap: 14px;
-  width: 100%;
-  padding: 16px 16px;
-  background: transparent;
-  border: none;
-  border-bottom: 1px solid var(--line);
-  color: var(--ink);
-  text-align: left;
-  cursor: pointer;
-  min-height: 64px;
+  height: 64px;
+  padding: 0 max(8px, 1.6vw);
 }
-.trackRow:last-child { border-bottom: none; }
-.trackRow:active { background: var(--bg-raise-2); }
-
-.trackRow .rowArt, .trackRow .rowArtPlaceholder {
-  width: 44px;
-  height: 44px;
-  border-radius: 6px;
-  object-fit: cover;
-  flex-shrink: 0;
-  background: var(--bg);
-}
-.trackRow .rowArtPlaceholder {
+.fp-headline {
+  flex: 1;
+  min-width: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--ink-dim);
+  padding: 0 16px;
+  font-size: 16px;
+  color: var(--ink-2);
+}
+#fpHeadline { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fp-swatch {
+  flex: none;
+  width: 12px;
+  height: 12px;
+  margin-right: 10px;
+  border-radius: 3px;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.35);
+}
+.fp-time {
+  flex: none;
+  min-width: 48px;
+  padding-right: 6px;
+  text-align: right;
+  font-size: 18px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
 }
 
-.trackRow .rowText { min-width: 0; flex: 1; }
-.trackRow .rowTitle {
-  font-size: 1.05rem;
-  font-weight: 700;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+.fp-body {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
+  grid-column-gap: 4vw;
+  padding: 0 4vw max(14px, 3vh);
 }
-.trackRow .rowAuthor {
-  font-size: 0.85rem;
-  color: var(--ink-dim);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  margin-top: 2px;
+.fp-main {
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
 }
-.trackRow.playing .rowTitle { color: var(--accent); }
-
-/* Compact card */
-#playerCard {
-  width: 100%;
+.fp-art-box {
+  flex: 1;
+  min-height: 96px;
   display: flex;
   align-items: center;
-  gap: 14px;
-  padding: 12px 14px;
-  background: var(--bg-raise);
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  cursor: pointer;
+  justify-content: center;
+  margin-bottom: 2.4vh;
+}
+.fp-art {
+  display: block;
+  border-radius: 10px;
+  object-fit: cover;
+  box-shadow: 0 14px 44px rgba(0, 0, 0, 0.5);
+}
+.fp-art-ph {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.08);
+}
+.fp-art-ph svg { width: 36%; height: 36%; fill: var(--ink-3); }
+
+.fp-meta { flex: none; }
+.fp-title, .fp-sub { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fp-title { font-size: clamp(20px, 2.3vw, 30px); font-weight: 700; line-height: 1.25; }
+.fp-sub { font-size: clamp(15px, 1.5vw, 19px); color: var(--ink-2); margin-top: 2px; }
+
+.fp-seek { flex: none; margin-top: 1.4vh; }
+.fp-times {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+  color: var(--ink-2);
+  font-variant-numeric: tabular-nums;
 }
 
-#trackArt, #trackArtPlaceholder {
+.fp-controls {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  max-width: 460px;
+  margin: 0.8vh auto 0;
+}
+.fp-controls .ibtn { width: 56px; height: 56px; }
+.fp-controls .ibtn svg { width: 32px; height: 32px; }
+.fp-controls .ibtn.is-off { color: var(--ink-3); }
+.fp-controls .fp-play { width: 72px; height: 72px; background: #fff; color: #000; }
+.fp-controls .fp-play svg { width: 40px; height: 40px; }
+.fp-controls .fp-play:active { background: rgba(255, 255, 255, 0.82); }
+.fp-play.is-buffering::after { border-top-color: #fff; }
+
+.fp-vol {
+  flex: none;
+  display: flex;
+  align-items: center;
+  width: 100%;
+  max-width: 460px;
+  margin: 1.2vh auto 0;
+  color: var(--ink-2);
+}
+.fp-vol-icon { display: flex; flex: none; }
+.fp-vol-icon svg { width: 22px; height: 22px; fill: currentColor; }
+.fp-vol .range { flex: 1; margin: 0 12px; }
+
+/* Seek and volume sliders: white fill up to --p, like YouTube Music. */
+.range {
+  --p: 0%;
+  -webkit-appearance: none;
+  appearance: none;
+  display: block;
+  width: 100%;
+  height: 28px;
+  margin: 0;
+  padding: 0;
+  background: transparent;
+  cursor: pointer;
+}
+.range::-webkit-slider-runnable-track {
+  height: 4px;
+  border-radius: 2px;
+  background: linear-gradient(to right, #fff 0, #fff var(--p), rgba(255, 255, 255, 0.24) var(--p), rgba(255, 255, 255, 0.24) 100%);
+}
+.range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 16px;
+  height: 16px;
+  margin-top: -6px;
+  border: 0;
+  border-radius: 50%;
+  background: #fff;
+}
+.range::-moz-range-track { height: 4px; border-radius: 2px; background: rgba(255, 255, 255, 0.24); }
+.range::-moz-range-progress { height: 4px; border-radius: 2px; background: #fff; }
+.range::-moz-range-thumb { width: 16px; height: 16px; border: 0; border-radius: 50%; background: #fff; }
+
+/* ---- Queue ---------------------------------------------------------------- */
+.fp-side {
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.fp-tabs {
+  flex: none;
+  display: flex;
+  align-items: center;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.14);
+}
+.fp-tab {
+  position: relative;
+  height: 48px;
+  margin: 0 22px 0 0;
+  padding: 0 4px;
+  border: 0;
+  background: transparent;
+  font-size: 17px;
+  font-weight: 600;
+  color: var(--ink-2);
+  cursor: pointer;
+}
+.fp-tab.is-active { color: #fff; }
+.fp-tab.is-active::after {
+  content: "";
+  position: absolute;
+  left: 0; right: 0; bottom: -1px;
+  height: 2px;
+  background: #fff;
+}
+#fpSaved { margin-left: auto; padding-left: 12px; font-size: 13px; color: var(--ink-2); text-align: right; }
+.fp-pane {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ---- Search ---------------------------------------------------------------- */
+.search-bar {
+  flex: none;
+  display: flex;
+  align-items: center;
+  height: 48px;
+  margin: 12px 0 10px;
+  padding: 0 16px;
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.1);
+}
+.search-bar:focus-within { background: rgba(255, 255, 255, 0.16); box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.5); }
+.search-icon { display: flex; flex: none; margin-right: 10px; color: var(--ink-2); }
+.search-icon svg { width: 22px; height: 22px; fill: currentColor; }
+#searchInput {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: #fff;
+  font: inherit;
+  font-size: 17px;
+  -webkit-user-select: text;
+  user-select: text;
+}
+#searchInput::placeholder { color: var(--ink-3); }
+.search-kinds { flex: none; display: flex; margin-bottom: 6px; }
+.chip {
+  height: 36px;
+  margin-right: 8px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.1);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+}
+.chip.is-active { background: #fff; color: #000; }
+.search-note {
+  flex: none;
+  padding: 8px 4px;
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--ink-2);
+}
+
+.fp-queue {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  padding-top: 6px;
+}
+.q-row {
+  display: flex;
+  align-items: center;
+  border-radius: 8px;
+}
+.q-row.is-current { background: rgba(255, 255, 255, 0.1); }
+.q-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  min-height: 68px;
+  margin: 0;
+  padding: 8px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+.q-main:active { background: rgba(255, 255, 255, 0.1); }
+.q-row.is-unavailable .q-main { opacity: 0.42; }
+.q-remove { margin-right: 4px; color: var(--ink-2); }
+.q-remove svg { width: 22px; height: 22px; }
+.q-remove.is-confirm {
+  width: auto;
+  padding: 0 16px;
+  border-radius: 999px;
+  background: #b3261e;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+}
+.q-art {
+  position: relative;
+  flex: none;
   width: 52px;
   height: 52px;
   border-radius: 6px;
-  object-fit: cover;
-  flex-shrink: 0;
-  background: var(--bg);
-}
-#trackArtPlaceholder {
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.1);
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--ink-dim);
-  font-size: 1.6rem;
 }
-
-#trackInfo { flex: 1; min-width: 0; }
-
-#trackTitle {
-  font-size: 1.05rem;
-  font-weight: 700;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-#trackAuthor {
-  font-size: 0.85rem;
-  color: var(--ink-dim);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  margin-top: 2px;
-}
-
-#playBtn {
-  flex-shrink: 0;
-  width: 56px;
-  height: 56px;
-  display: flex;
+.q-art img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.q-art > svg { width: 50%; height: 50%; fill: var(--ink-3); }
+.q-eq {
+  position: absolute;
+  top: 0; right: 0; bottom: 0; left: 0;
+  display: none;
   align-items: center;
   justify-content: center;
-  background: var(--accent);
-  color: var(--bg);
-  border: none;
-  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.55);
+}
+.q-eq svg { width: 26px; height: 26px; fill: #fff; }
+.q-row.is-current .q-eq { display: flex; }
+#fp:not(.is-playing) .q-eq svg { opacity: 0.6; }
+.q-meta { flex: 1; min-width: 0; padding: 0 12px 0 14px; }
+.q-title, .q-sub { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.q-title { font-size: 16px; font-weight: 600; }
+.q-sub { font-size: 13px; color: var(--ink-2); margin-top: 2px; }
+.q-state {
+  flex: none;
+  display: flex;
+  align-items: center;
+  margin-right: 12px;
+  font-size: 12px;
+  color: var(--ink-2);
+  font-variant-numeric: tabular-nums;
+}
+.q-state svg { width: 18px; height: 18px; fill: currentColor; margin-right: 3px; }
+.q-dur {
+  flex: none;
+  min-width: 44px;
+  text-align: right;
+  font-size: 13px;
+  color: var(--ink-2);
+  font-variant-numeric: tabular-nums;
+}
+
+@media (orientation: portrait) {
+  .fp-body {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr);
+    grid-row-gap: 2vh;
+  }
+  .fp-art-box { flex: none; height: 34vh; }
+}
+
+/* ---- Diagnostics (long-press the clock) ------------------------------------ */
+#diag {
+  position: fixed;
+  top: 0; right: 0; bottom: 0; left: 0;
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+  padding: 16px var(--edge);
+  background: rgba(0, 0, 0, 0.95);
+  color: #fff;
+}
+.diag-head { display: flex; align-items: center; }
+.diag-head h2 { flex: 1; margin: 0; font-size: 20px; }
+.diag-head button {
+  margin-left: 10px;
+  min-height: 44px;
+  padding: 0 16px;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 8px;
+  background: transparent;
   cursor: pointer;
 }
-#playBtn:active { transform: scale(0.94); }
+#diagText {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  margin: 12px 0 0;
+  font: 13px/1.45 ui-monospace, "Roboto Mono", Menlo, Consolas, monospace;
+  white-space: pre-wrap;
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #fp, #fp.open { transition: none; }
+  .cd-fill { transition: none; }
+  .ibtn.is-buffering::after { animation: none; border-color: var(--ink-3); }
+}

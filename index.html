@@ -1,72 +1,118 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
+<meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <title>Clockadashi</title>
+<meta name="description" content="Wall clock with Ekadashi countdowns and offline devotional music">
+<meta name="theme-color" content="#000000">
+<meta name="mobile-web-app-capable" content="yes">
 <link rel="manifest" href="manifest.json">
-<meta name="theme-color" content="#0b0f1c">
-<link rel="stylesheet" href="style.css">
+<link rel="icon" type="image/png" href="icons/icon-192.png">
+<link rel="stylesheet" href="style.css?v=3.1.0">
+<script defer src="app.js?v=3.1.0"></script>
+<script defer src="player.js?v=3.1.0"></script>
 </head>
-<body>
+<body class="s-calm">
+<noscript><div class="noscript">Javascript is not supported on this browser</div></noscript>
 
-  <div id="app">
+<!-- The clock screen: today's events, the clock, then countdowns + music. -->
+<main id="screen">
+  <div id="top"></div>
 
-    <button id="fullscreenBtn" aria-label="Toggle fullscreen" title="Toggle fullscreen">
-      <svg class="icon-expand" viewBox="0 0 24 24" width="24" height="24" aria-hidden="true">
-        <path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-      </svg>
-      <svg class="icon-compress is-hidden" viewBox="0 0 24 24" width="24" height="24" aria-hidden="true">
-        <path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-      </svg>
-    </button>
-
-    <!-- Clock is the only hero element; JS grows #clock to fill whatever
-         space is left once the two bottom corners are accounted for. -->
-    <main id="clockStage">
-      <div id="clockGroup">
-        <div id="clock" aria-live="off">
-          <span id="clockMain">--:--</span><span id="clockSeconds">--</span><span id="clockAmPm"></span>
-        </div>
-        <div id="dateRow">&nbsp;</div>
-      </div>
-    </main>
-
-    <!-- Bottom-left: today's events, then any upcoming Ekadashi progress bars -->
-    <div id="cornerLeft">
-      <div id="eventList"></div>
-      <span id="loadingIndicator" class="spinner" hidden></span>
-      <div id="progressList"></div>
+  <div id="clockArea">
+    <div id="clockBlock">
+      <div id="time"><span id="hh">--</span>:<span id="mm">--</span>:<span id="ss">--</span></div>
+      <div id="date"></div>
     </div>
-
-    <!-- Bottom-right: floating music player. Tap the card to reveal the full
-         track list. Auto-hides after a couple of minutes of inactivity. -->
-    <div id="player">
-      <div id="downloadStatus" hidden></div>
-
-      <div id="trackListPanel">
-        <div id="trackList"></div>
-      </div>
-
-      <div id="playerCard" role="button" tabindex="0" aria-label="Show track list">
-        <img id="trackArt" alt="" hidden>
-        <div id="trackArtPlaceholder">&#9835;</div>
-        <div id="trackInfo">
-          <div id="trackTitle">Loading music&hellip;</div>
-          <div id="trackAuthor"></div>
-        </div>
-        <button id="playBtn" aria-label="Play or pause">
-          <svg class="icon-play" viewBox="0 0 24 24" width="26" height="26"><path d="M8 5v14l11-7z" fill="currentColor"/></svg>
-          <svg class="icon-pause is-hidden" viewBox="0 0 24 24" width="26" height="26"><path d="M7 5h4v14H7zM13 5h4v14h-4z" fill="currentColor"/></svg>
-        </button>
-      </div>
-    </div>
-
-    <audio id="audioEl" preload="none"></audio>
-
   </div>
 
-<script src="app.js"></script>
-<script src="player.js"></script>
+  <div id="bottom">
+    <div id="bars"></div>
+    <div id="mini">
+      <button id="miniOpen" type="button" aria-label="Open music player">
+        <span class="mini-art"><img id="miniArt" alt="" hidden><span id="miniPh" class="art-ph" data-icon="note"></span></span>
+        <span class="mini-meta"><span id="miniTitle" class="mini-title">Music</span><span id="miniSub" class="mini-sub"></span></span>
+      </button>
+      <button id="miniPlay" class="ibtn" type="button" aria-label="Play" data-icon="play"></button>
+      <button id="miniNext" class="ibtn" type="button" aria-label="Next song" data-icon="next"></button>
+      <span class="mini-progress" aria-hidden="true"><i id="miniBar"></i></span>
+    </div>
+  </div>
+</main>
+
+<div id="status" hidden><span id="statusIcon" hidden></span><span id="statusText"></span></div>
+<button id="fsBtn" class="ibtn" type="button" aria-label="Full screen" data-icon="fullscreen"></button>
+
+<!-- Full player: slides up when the mini player is tapped. -->
+<section id="fp" aria-label="Music player" aria-hidden="true">
+  <div class="fp-tint"></div>
+  <header class="fp-head">
+    <button id="fpClose" class="ibtn" type="button" aria-label="Close music player" data-icon="down"></button>
+    <div class="fp-headline"><span id="fpSwatch" class="fp-swatch" hidden></span><span id="fpHeadline"></span></div>
+    <div id="fpTime" class="fp-time"></div>
+  </header>
+  <div class="fp-body">
+    <div class="fp-main">
+      <div id="fpArtBox" class="fp-art-box">
+        <img id="fpArt" class="fp-art" alt="" hidden>
+        <div id="fpArtPh" class="fp-art-ph" data-icon="note"></div>
+      </div>
+      <div class="fp-meta">
+        <div id="fpTitle" class="fp-title"></div>
+        <div id="fpSub" class="fp-sub"></div>
+      </div>
+      <div class="fp-seek">
+        <input id="fpSeek" class="range" type="range" min="0" max="1000" step="1" value="0" aria-label="Song position">
+        <div class="fp-times"><span id="fpCur">0:00</span><span id="fpDur">0:00</span></div>
+      </div>
+      <div class="fp-controls">
+        <button id="fpShuffle" class="ibtn" type="button" aria-label="Shuffle" aria-pressed="false" data-icon="shuffle"></button>
+        <button id="fpPrev" class="ibtn" type="button" aria-label="Previous song" data-icon="prev"></button>
+        <button id="fpPlay" class="ibtn fp-play" type="button" aria-label="Play" data-icon="play"></button>
+        <button id="fpNext" class="ibtn" type="button" aria-label="Next song" data-icon="next"></button>
+        <button id="fpRepeat" class="ibtn" type="button" aria-label="Repeating all songs" data-icon="repeat"></button>
+      </div>
+      <div class="fp-vol">
+        <span class="fp-vol-icon" data-icon="volDown"></span>
+        <input id="fpVol" class="range" type="range" min="0" max="100" step="1" value="100" aria-label="Volume">
+        <span class="fp-vol-icon" data-icon="volUp"></span>
+      </div>
+    </div>
+    <div class="fp-side">
+      <div class="fp-tabs" role="tablist">
+        <button id="tabQueue" class="fp-tab is-active" type="button" role="tab" aria-selected="true" aria-controls="paneQueue">Up next</button>
+        <button id="tabSearch" class="fp-tab" type="button" role="tab" aria-selected="false" aria-controls="paneSearch">Search</button>
+        <span id="fpSaved"></span>
+      </div>
+      <div id="paneQueue" class="fp-pane" role="tabpanel" aria-labelledby="tabQueue">
+        <div id="fpQueue" class="fp-queue"></div>
+      </div>
+      <div id="paneSearch" class="fp-pane" role="tabpanel" aria-labelledby="tabSearch" hidden>
+        <form id="searchForm" class="search-bar" role="search" autocomplete="off">
+          <span class="search-icon" data-icon="search"></span>
+          <input id="searchInput" type="search" placeholder="Search YouTube Music" enterkeyhint="search" aria-label="Search YouTube Music">
+        </form>
+        <div class="search-kinds" role="group" aria-label="Show">
+          <button class="chip is-active" type="button" data-kind="songs" aria-pressed="true">Songs</button>
+          <button class="chip" type="button" data-kind="videos" aria-pressed="false">Videos</button>
+        </div>
+        <div id="searchNote" class="search-note"></div>
+        <div id="searchResults" class="fp-queue"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div id="diag" role="dialog" aria-label="Diagnostics" hidden>
+  <div class="diag-head">
+    <h2>Diagnostics</h2>
+    <button id="diagClear" type="button">Clear activity</button>
+    <button id="diagClose" type="button">Close</button>
+  </div>
+  <pre id="diagText"></pre>
+</div>
+
+<audio id="audio" preload="none"></audio>
 </body>
 </html>
