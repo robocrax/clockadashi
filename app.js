@@ -7,7 +7,7 @@
   'use strict';
 
   /* ---- Settings ---------------------------------------------------------- */
-  var VERSION = '3.1.0';
+  var VERSION = '3.2.0';
   var COUNTDOWN_DAYS = 8;      // a ProgressBar event gets its bar this many days ahead
   var APPROACH_DAYS = 4;       // purple tint from this many days out, until the red day before
   var PAD_HOURS = true;        // 08:05:09 rather than 8:05:09, so the clock never changes width
@@ -15,6 +15,8 @@
   var PROBE_ONLINE_SEC = 120;  // connection check while online…
   var PROBE_OFFLINE_SEC = 30;  // …and while offline, to notice Wi-Fi coming back quickly
   var RELOAD_IDLE_SEC = 90;    // a downloaded app update applies after this long untouched (never mid-song)
+  var FULLSCREEN_IDLE_SEC = 60; // in a normal browser tab, go back to the full-screen app after this long untouched
+  var PANEL_HELPER = 'http://127.0.0.1:8791';  // the panel's helper app (android/), when present
 
   var COLORS = { calm: '#000000', tomorrow: '#830300', today: '#ed6d19' };
   var APPROACH_FROM = [0x1a, 0x00, 0x1f];  // first purple day (APPROACH_DAYS out)
@@ -50,6 +52,7 @@
     eq: 'M7 18h2V6H7v12zm4 4h2V2h-2v20zm-8-8h2v-4H3v4zm12 4h2V6h-2v12zm4-8v4h2v-4h-2z',
     search: 'M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z',
     add: 'M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z',
+    mic: 'M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5.3-3c0 3-2.54 5.1-5.3 5.1S6.7 14 6.7 11H5c0 3.41 2.72 6.23 6 6.72V21h2v-3.28c3.28-.48 6-3.3 6-6.72h-1.7z',
     remove: 'M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z'
   };
 
@@ -540,6 +543,21 @@
     return 'unknown';
   }
 
+  // A browser tab can't go full screen without a tap, so after a minute untouched the panel's
+  // helper app reopens the clock as the installed full-screen app instead.
+  var lastReopen = 0;
+  function fullscreenWhenIdle() {
+    if (Date.now() - lastTouch < FULLSCREEN_IDLE_SEC * 1000 || document.visibilityState !== 'visible') return;
+    var mode = displayMode();
+    if (fsElement() || mode === 'fullscreen' || mode === 'standalone') return;
+    if (!el.diag.hidden || (CK.player && CK.player.busy())) return;  // never pull a playing song out from under you
+    if (Date.now() - lastReopen < 10 * 60000) return;
+    lastReopen = Date.now();
+    enterFullscreen();
+    fetchWithin(PANEL_HELPER + '/open-clock', { cache: 'no-store' }, 5000)
+      .then(function () { log('screen', 'idle in a browser tab: reopened as the full-screen app'); }, noop);
+  }
+
   /* ---- Keep the screen on -------------------------------------------------- */
   var wakeLock = null;
   function keepAwake() {
@@ -670,6 +688,7 @@
     scheduleProbe();
     setInterval(function () { syncAll('every ' + SYNC_EVERY_MIN + ' min'); }, SYNC_EVERY_MIN * 60000);
     setInterval(maybeReload, 15000);
+    setInterval(fullscreenWhenIdle, 15000);
   }
 
   if (document.readyState === 'complete') boot();

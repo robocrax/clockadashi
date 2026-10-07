@@ -8,6 +8,7 @@ pushing to main deploys it, and the tablet picks the change up by itself.
   style.css      all styling
   app.js         clock, calendar, alert colours, offline data, updates, activity log
   player.js      music: mini player, full player, offline song library
+  intercom.js    hold-to-talk microphone next to the mini player
   sw.js          service worker (makes everything work without Wi-Fi)
   manifest.json  lets Android install it as a full-screen app
   icons/         app icons
@@ -16,6 +17,7 @@ pushing to main deploys it, and the tablet picks the change up by itself.
   music/         songs (.mp3) and artwork (.jpg)
   server/        song server for the Search tab (YouTube Music + yt-dlp);
                  runs on a computer or the tablet, not on GitHub Pages
+  android/       "Clock Panel" helper app for the wall panel (see THE PANEL)
 
 
 WHAT THE SCREEN DOES
@@ -96,6 +98,13 @@ on localhost).
     and start the server with
         --host 0.0.0.0 --token SECRET --origin https://clock.nehal.boo
 
+  To keep it running on this computer and the tunnel up through Wi-Fi drops
+  and panel reboots, run server\panel-link.ps1 (starts the server, re-does
+  "adb connect" + "adb reverse" every 30 s; log in server\panel-link.log).
+  To start it at every logon, run once in PowerShell:
+    $a = New-ScheduledTaskAction -Execute powershell.exe -Argument '-NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File "C:\Users\Tom\Documents\GitHub\clockadashi\server\panel-link.ps1"'
+    Register-ScheduledTask -TaskName 'Clockadashi panel link' -Action $a -Trigger (New-ScheduledTaskTrigger -AtLogOn -User $env:USERNAME)
+
 Chrome may ask once to let the clock reach "apps and services on this
 device"; allow it. Downloads also stay in server/downloads (safe to
 delete; the tablet keeps its own copies). When downloads start failing,
@@ -139,6 +148,48 @@ top-right corner leaves full screen. The screen is kept awake while the
 app is open.
 
 
+In a normal Chrome tab on the panel, after 60 seconds untouched (and no
+song playing) the page asks the panel helper app to reopen it as the
+installed full-screen app (a web page can't go full screen without a tap).
+
+
+INTERCOM
+--------
+The round microphone right of the mini player: hold to record, let go and
+it plays through the panel at full volume, then the volume goes back. On
+the panel the helper app does the playing, so the TV's Bluetooth audio and
+the music pause while you talk and carry on afterwards. The button hides
+itself on devices whose microphone can't be opened (the wall panel's
+built-in mic is switched off in its firmware; a USB microphone works) and
+comes back when one works.
+
+
+THE PANEL (android/)
+--------------------
+The "Clock Panel" helper app is the panel's home screen and runs a small
+background service:
+  - Home / boot: a 4-second countdown, then the clock opens as the installed
+    full-screen app (Chrome menu > Install, accepted by this app). "Stay
+    here" on that screen reaches Settings, Wi-Fi, Bluetooth, the vendor app.
+  - Reconnects the TV ("Living Room TV", any paired device with "TV" in its
+    name) as the Bluetooth audio source whenever nothing is connected, and
+    turns Bluetooth back on if it is left off.
+  - Holds a high-performance Wi-Fi lock (no Wi-Fi power saving).
+  - Dismisses "Google Play services" / Play Protect / physical keyboard
+    notifications.
+  - Intercom and full-screen requests from the page on http://127.0.0.1:8791.
+Build: powershell -File android\build.ps1 (JDK 17 + Android build-tools 34 and
+platform 29; signing key kept in %USERPROFILE%\.clockadashi). Install:
+  adb install -r android\out\clockpanel.apk
+  adb shell cmd package set-home-activity boo.nehal.panel/.HomeActivity
+  adb shell appops set boo.nehal.panel SYSTEM_ALERT_WINDOW allow
+  adb shell cmd notification allow_listener boo.nehal.panel/.PromptBlocker
+  adb shell settings put global hidden_api_policy 1
+Undo: adb shell cmd package set-home-activity com.youzhuan.musiclauncher/.MainActivity
+android/root/ holds an optional boot script that also switches off the Wi-Fi
+driver's power saving and Bluetooth sleep (needs adb remount; not installed).
+
+
 TESTING AND DIAGNOSTICS
 -----------------------
 - Preview any moment by adding ?now= to the address, for example
@@ -158,6 +209,7 @@ Top of app.js:
   PAD_HOURS          true 08:05:09 instead of 8:05:09 (keeps width fixed)
   SYNC_EVERY_MIN     30   calendar / song list / app update checks
   RELOAD_IDLE_SEC    90   idle time before an update is applied
+  FULLSCREEN_IDLE_SEC 60  idle time before a browser tab reopens full screen
 Top of player.js:
   CLOSE_AFTER_SEC    90   full player closes itself after this long
   SONG_SERVER        http://localhost:8790   default song server address

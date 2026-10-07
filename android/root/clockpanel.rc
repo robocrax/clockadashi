@@ -1,0 +1,9 @@
+service clockpanel_keeper /system/bin/sh /system/etc/clockpanel-keeper.sh
+    user root
+    group root
+    seclabel u:r:su:s0
+    disabled
+    oneshot
+
+on property:sys.boot_completed=1
+    start clockpanel_keeper

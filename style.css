@@ -241,6 +241,27 @@ body.s-tomorrow .cd:first-child .cd-label { font-weight: 700; }
 }
 .mini-progress i { display: block; height: 100%; width: 0; background: var(--ink); }
 
+/* ---- Intercom: a round mic to the right of the mini player -------------- */
+#dock { display: flex; align-items: center; }
+#miniTalk {
+  width: clamp(52px, 7.5vh, 68px);
+  height: clamp(52px, 7.5vh, 68px);
+  margin-left: max(8px, 1vw);
+  background: var(--surface);
+  touch-action: none;
+  -webkit-touch-callout: none;
+}
+#miniTalk svg { width: 55%; height: 55%; }
+#miniTalk.is-recording {
+  background: #d93025;
+  animation: talk-pulse 1.2s ease-in-out infinite;
+}
+#miniTalk.is-playing { background: var(--surface-press); }
+@keyframes talk-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(217, 48, 37, 0.6); }
+  50% { box-shadow: 0 0 0 12px rgba(217, 48, 37, 0); }
+}
+
 /* ---- Corners: connection / saving status, full-screen toggle ----------- */
 #status {
   position: fixed;
@@ -264,7 +285,7 @@ body.s-tomorrow .cd:first-child .cd-label { font-weight: 700; }
 
 @media (orientation: portrait) {
   #bottom { grid-template-columns: minmax(0, 1fr); grid-row-gap: 2vh; }
-  #mini { width: 100%; }
+  #mini { width: auto; flex: 1; min-width: 0; }
   .cd-label { font-size: clamp(16px, 4vw, 40px); }
 }
 
@@ -673,4 +694,5 @@ body.s-tomorrow .cd:first-child .cd-label { font-weight: 700; }
   #fp, #fp.open { transition: none; }
   .cd-fill { transition: none; }
   .ibtn.is-buffering::after { animation: none; border-color: var(--ink-3); }
+  #miniTalk.is-recording { animation: none; }
 }

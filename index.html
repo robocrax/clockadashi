@@ -9,9 +9,10 @@
 <meta name="mobile-web-app-capable" content="yes">
 <link rel="manifest" href="manifest.json">
 <link rel="icon" type="image/png" href="icons/icon-192.png">
-<link rel="stylesheet" href="style.css?v=3.1.0">
-<script defer src="app.js?v=3.1.0"></script>
-<script defer src="player.js?v=3.1.0"></script>
+<link rel="stylesheet" href="style.css?v=3.2.0">
+<script defer src="app.js?v=3.2.0"></script>
+<script defer src="player.js?v=3.2.0"></script>
+<script defer src="intercom.js?v=3.2.0"></script>
 </head>
 <body class="s-calm">
 <noscript><div class="noscript">Javascript is not supported on this browser</div></noscript>
@@ -29,6 +30,7 @@
 
   <div id="bottom">
     <div id="bars"></div>
+    <div id="dock">
     <div id="mini">
       <button id="miniOpen" type="button" aria-label="Open music player">
         <span class="mini-art"><img id="miniArt" alt="" hidden><span id="miniPh" class="art-ph" data-icon="note"></span></span>
@@ -37,6 +39,9 @@
       <button id="miniPlay" class="ibtn" type="button" aria-label="Play" data-icon="play"></button>
       <button id="miniNext" class="ibtn" type="button" aria-label="Next song" data-icon="next"></button>
       <span class="mini-progress" aria-hidden="true"><i id="miniBar"></i></span>
+    </div>
+    <!-- Intercom: hold to record, let go to play it through the panel at full volume. -->
+    <button id="miniTalk" class="ibtn" type="button" aria-label="Hold to talk" data-icon="mic"></button>
     </div>
   </div>
 </main>

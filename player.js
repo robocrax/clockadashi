@@ -1152,6 +1152,7 @@
     busy: function () { return isOpen || (!audio.paused && !audio.ended); },
     open: openFull,
     close: function () { closeFull(false); },
+    flash: flash,
     describe: function () {
       var n = tracks.length, count = 0;
       var lines = tracks.map(function (t) {
