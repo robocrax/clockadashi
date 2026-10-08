@@ -174,6 +174,10 @@ background service:
   - Reconnects the TV ("Living Room TV", any paired device with "TV" in its
     name) as the Bluetooth audio source whenever nothing is connected, and
     turns Bluetooth back on if it is left off.
+  - Sets the amplifier's hardware volume the instant Android's volume changes
+    (the vendor music app only copied it across every ~1.5 s, so TV volume
+    changes reached the speakers late). Uses the panel's own driver library,
+    libpt2314.so, which is not in git: build.ps1 explains how to fetch it.
   - Holds a high-performance Wi-Fi lock (no Wi-Fi power saving).
   - Dismisses "Google Play services" / Play Protect / physical keyboard
     notifications.

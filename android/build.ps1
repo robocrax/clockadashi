@@ -31,6 +31,18 @@ Push-Location "$out\dex"
 Pop-Location
 if ($LASTEXITCODE) { throw 'aapt add failed' }
 
+# The amplifier driver library comes from the panel's own firmware and is not kept in git.
+# Fetch it once with:  adb pull /product/app/Music_player/Music_player.apk  and take
+# lib/armeabi-v7a/libpt2314.so out of it into android\vendor\ .
+$lib = "$here\vendor\libpt2314.so"
+if (-not (Test-Path $lib)) { throw "missing $lib (see comment above)" }
+New-Item -ItemType Directory -Force "$out\native\lib\armeabi-v7a" | Out-Null
+Copy-Item $lib "$out\native\lib\armeabi-v7a\"
+Push-Location "$out\native"
+& "$bt\aapt.exe" add "$out\base.apk" lib/armeabi-v7a/libpt2314.so | Out-Null
+Pop-Location
+if ($LASTEXITCODE) { throw 'aapt add (lib) failed' }
+
 & "$bt\zipalign.exe" -f 4 "$out\base.apk" "$out\aligned.apk"
 if ($LASTEXITCODE) { throw 'zipalign failed' }
 

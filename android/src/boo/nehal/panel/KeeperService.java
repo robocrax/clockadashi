@@ -7,8 +7,10 @@ import android.app.Service;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothProfile;
+import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.media.AudioAttributes;
 import android.media.AudioFocusRequest;
 import android.media.AudioManager;
@@ -35,6 +37,7 @@ import java.util.Set;
 
 /**
  * Runs all the time:
+ *  - sets the amplifier's hardware volume the moment Android's media volume changes (Amp)
  *  - reconnects the TV as a Bluetooth audio source whenever it isn't connected
  *  - turns Bluetooth back on if something leaves it off
  *  - holds a high-performance Wi-Fi lock (no Wi-Fi power saving)
@@ -94,12 +97,33 @@ public class KeeperService extends Service {
     bindSink();
     main.post(loop);
     startServer();
+    startAmp();
+  }
+
+  /* ---- Amplifier volume follows Android's media volume immediately ------- */
+  private final BroadcastReceiver volumeChanged = new BroadcastReceiver() {
+    @Override public void onReceive(Context c, Intent i) {
+      if (i.getIntExtra("android.media.EXTRA_VOLUME_STREAM_TYPE", -1) != AudioManager.STREAM_MUSIC) return;
+      Amp.setVolume(musicVolumePercent(i.getIntExtra("android.media.EXTRA_VOLUME_STREAM_VALUE", 0)));
+    }
+  };
+
+  private int musicVolumePercent(int index) {
+    int max = am.getStreamMaxVolume(AudioManager.STREAM_MUSIC);
+    return max == 100 ? index : Math.round(index * 100f / max);
+  }
+
+  private void startAmp() {
+    if (!Amp.open()) return;
+    Amp.setVolume(musicVolumePercent(am.getStreamVolume(AudioManager.STREAM_MUSIC)));
+    registerReceiver(volumeChanged, new IntentFilter("android.media.VOLUME_CHANGED_ACTION"), null, main);
   }
 
   @Override public int onStartCommand(Intent i, int flags, int id) { return START_STICKY; }
 
   @Override public void onDestroy() {
     main.removeCallbacksAndMessages(null);
+    try { unregisterReceiver(volumeChanged); } catch (IllegalArgumentException notRegistered) {}
     try { if (server != null) server.close(); } catch (Exception ignored) {}
     endIntercom();
     if (wifiLock != null) wifiLock.release();

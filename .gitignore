@@ -10,3 +10,4 @@ android/out/
 server/panel-link.log
 server/server.log
 server/server.err.log
+android/vendor/
