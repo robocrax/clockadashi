@@ -9,6 +9,8 @@ pushing to main deploys it, and the tablet picks the change up by itself.
   app.js         clock, calendar, alert colours, offline data, updates, activity log
   player.js      music: mini player, full player, offline song library
   intercom.js    hold-to-talk microphone next to the mini player
+  timers.js      kitchen timers (button left of the mini player)
+  fonts/         Manrope, served with the site so it works offline
   sw.js          service worker (makes everything work without Wi-Fi)
   manifest.json  lets Android install it as a full-screen app
   icons/         app icons
@@ -153,6 +155,20 @@ song playing) the page asks the panel helper app to reopen it as the
 installed full-screen app (a web page can't go full screen without a tap).
 
 
+KITCHEN TIMERS
+--------------
+The round timer button left of the mini player. Tap it for the timer sheet:
+a new timer starts at the length used last time (20 minutes the first time),
+−1 / +1 changes it a minute at a time, Start runs it. Run as many as you
+like; each can be paused, given or lose a minute, or removed. While timers
+run, the button shows the next one counting down (+N when there are more).
+When one finishes the screen turns red with "Timer N is done": Stop, or
++1 min for a little longer. On the panel the helper app rings (TV and music
+pause, volume at least 80%, everything put back afterwards; it stops by
+itself after 3 minutes) and it rings on time even if the page is in the
+background. Elsewhere the page chimes by itself. Timers survive reloads.
+
+
 INTERCOM
 --------
 The round microphone right of the mini player: hold to record, let go and
@@ -181,7 +197,10 @@ background service:
   - Holds a high-performance Wi-Fi lock (no Wi-Fi power saving).
   - Dismisses "Google Play services" / Play Protect / physical keyboard
     notifications.
-  - Intercom and full-screen requests from the page on http://127.0.0.1:8791.
+  - Intercom, timer alarms and full-screen requests from the page on
+    http://127.0.0.1:8791.
+android/panel-cleanup.sh removes the vendor apps (trackers, LAN remote control,
+the slow volume echo) and the Wi-Fi password "Share" screen; see its comments.
 Build: powershell -File android\build.ps1 (JDK 17 + Android build-tools 34 and
 platform 29; signing key kept in %USERPROFILE%\.clockadashi). Install:
   adb install -r android\out\clockpanel.apk

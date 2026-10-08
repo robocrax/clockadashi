@@ -14,12 +14,16 @@ $out = "$here\out"
 Remove-Item -Recurse -Force $out -ErrorAction SilentlyContinue
 New-Item -ItemType Directory -Force "$out\classes", "$out\dex" | Out-Null
 
-& "$bt\aapt2.exe" link -o "$out\base.apk" -I $jar --manifest "$here\AndroidManifest.xml" `
-  --min-sdk-version 26 --target-sdk-version 28 --version-code 1 --version-name 1.0
+New-Item -ItemType Directory -Force "$out\gen" | Out-Null
+& "$bt\aapt2.exe" compile --dir "$here\res" -o "$out\res.zip"
+if ($LASTEXITCODE) { throw 'aapt2 compile failed' }
+& "$bt\aapt2.exe" link -o "$out\base.apk" -I $jar --manifest "$here\AndroidManifest.xml" -R "$out\res.zip" `
+  --java "$out\gen" --min-sdk-version 26 --target-sdk-version 28 --version-code 2 --version-name 1.1
 if ($LASTEXITCODE) { throw 'aapt2 link failed' }
 
-$srcs = Get-ChildItem "$here\src" -Recurse -Filter *.java | ForEach-Object FullName
-& javac -nowarn -source 8 -target 8 -bootclasspath "$jar;$bt\core-lambda-stubs.jar" -d "$out\classes" @srcs
+$srcs = @(Get-ChildItem "$here\src", "$out\gen" -Recurse -Filter *.java | ForEach-Object FullName)
+# UTF-8: the default on Windows (cp1252) turns "…" and "Wi‑Fi" into mojibake on the panel
+& javac -nowarn -encoding UTF-8 -source 8 -target 8 -bootclasspath "$jar;$bt\core-lambda-stubs.jar" -d "$out\classes" @srcs
 if ($LASTEXITCODE) { throw 'javac failed' }
 
 $classes = Get-ChildItem "$out\classes" -Recurse -Filter *.class | ForEach-Object FullName

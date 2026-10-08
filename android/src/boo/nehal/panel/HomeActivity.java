@@ -7,6 +7,9 @@ import android.content.SharedPreferences;
 import android.content.pm.LauncherApps;
 import android.content.pm.ShortcutInfo;
 import android.graphics.Color;
+import android.graphics.Typeface;
+import android.graphics.drawable.GradientDrawable;
+import android.graphics.drawable.StateListDrawable;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
@@ -14,7 +17,10 @@ import android.os.Process;
 import android.provider.Settings;
 import android.view.Gravity;
 import android.view.View;
-import android.widget.Button;
+import android.view.ViewGroup;
+import android.view.animation.LinearInterpolator;
+import android.widget.FrameLayout;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 import java.util.List;
@@ -44,52 +50,105 @@ public class HomeActivity extends Activity {
     }
   };
 
+  private View bar;
+  private float dp;
+
   @Override protected void onCreate(Bundle b) {
     super.onCreate(b);
     startForegroundService(new Intent(this, KeeperService.class));
+    dp = getResources().getDisplayMetrics().density;
 
     LinearLayout root = new LinearLayout(this);
     root.setOrientation(LinearLayout.VERTICAL);
     root.setGravity(Gravity.CENTER);
-    root.setBackgroundColor(Color.BLACK);
-    root.setPadding(48, 48, 48, 48);
+    root.setBackgroundColor(0xFF0D0D0F);
+    root.setPadding(px(48), px(48), px(48), px(48));
 
     TextView title = new TextView(this);
-    title.setText("Clockadashi panel");
+    title.setText("Clockadashi");
     title.setTextColor(Color.WHITE);
-    title.setTextSize(28);
+    title.setTextSize(40);
+    title.setTypeface(Typeface.create("sans-serif-medium", Typeface.BOLD));
     title.setGravity(Gravity.CENTER);
     root.addView(title);
 
     status = new TextView(this);
     status.setTextColor(0xB3FFFFFF);
-    status.setTextSize(18);
+    status.setTextSize(20);
     status.setGravity(Gravity.CENTER);
-    status.setPadding(0, 16, 0, 32);
+    status.setPadding(0, px(12), 0, px(14));
     root.addView(status);
+
+    // countdown bar: fills while the clock is about to open
+    FrameLayout track = new FrameLayout(this);
+    track.setBackground(rounded(0x26FFFFFF, 3));
+    bar = new View(this);
+    bar.setBackground(rounded(0xFFFFFFFF, 3));
+    bar.setPivotX(0);
+    track.addView(bar, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, px(6)));
+    LinearLayout.LayoutParams tp = new LinearLayout.LayoutParams(px(320), px(6));
+    tp.bottomMargin = px(36);
+    root.addView(track, tp);
 
     LinearLayout row = new LinearLayout(this);
     row.setGravity(Gravity.CENTER);
     root.addView(row);
-    addButton(row, "Open clock", v -> openClock());
-    addButton(row, "Stay here", v -> { stay = true; h.removeCallbacks(tick); status.setText("Staying on this screen"); });
-    addButton(row, "Settings", v -> { stay = true; startActivity(new Intent(Settings.ACTION_SETTINGS)); });
-    addButton(row, "Wi‑Fi", v -> { stay = true; startActivity(new Intent(Settings.ACTION_WIFI_SETTINGS)); });
-    addButton(row, "Bluetooth", v -> { stay = true; startActivity(new Intent(Settings.ACTION_BLUETOOTH_SETTINGS)); });
-    addButton(row, "Music app", v -> {
+    addTile(row, R.drawable.ic_clock, "Open clock", v -> openClock());
+    addTile(row, R.drawable.ic_pause, "Stay here", v -> {
       stay = true;
-      Intent i = getPackageManager().getLaunchIntentForPackage("com.youzhuan.music");
-      if (i != null) startActivity(i);
+      h.removeCallbacks(tick);
+      bar.animate().cancel();
+      status.setText("Staying on this screen");
     });
+    addTile(row, R.drawable.ic_settings, "Settings", v -> leave(new Intent(Settings.ACTION_SETTINGS)));
+    addTile(row, R.drawable.ic_wifi, "Wi‑Fi", v -> leave(new Intent(Settings.ACTION_WIFI_SETTINGS)));
+    addTile(row, R.drawable.ic_bluetooth, "Bluetooth", v -> leave(new Intent(Settings.ACTION_BLUETOOTH_SETTINGS)));
     setContentView(root);
   }
 
-  private void addButton(LinearLayout row, String label, View.OnClickListener l) {
-    Button btn = new Button(this);
-    btn.setText(label);
-    btn.setAllCaps(false);
-    btn.setOnClickListener(l);
-    row.addView(btn);
+  private int px(int dips) { return Math.round(dips * dp); }
+
+  private GradientDrawable rounded(int color, int radiusDp) {
+    GradientDrawable g = new GradientDrawable();
+    g.setColor(color);
+    g.setCornerRadius(radiusDp * dp);
+    return g;
+  }
+
+  private void leave(Intent i) {
+    stay = true;
+    startActivity(i);
+  }
+
+  /** A large rounded tile: icon above its label. */
+  private void addTile(LinearLayout row, int icon, String label, View.OnClickListener l) {
+    LinearLayout tile = new LinearLayout(this);
+    tile.setOrientation(LinearLayout.VERTICAL);
+    tile.setGravity(Gravity.CENTER);
+    StateListDrawable bg = new StateListDrawable();
+    bg.addState(new int[] { android.R.attr.state_pressed }, rounded(0xFF34343A, 22));
+    bg.addState(new int[] {}, rounded(0xFF1E1E23, 22));
+    tile.setBackground(bg);
+    tile.setClickable(true);
+    tile.setFocusable(true);
+    tile.setOnClickListener(l);
+
+    ImageView img = new ImageView(this);
+    img.setImageResource(icon);
+    tile.addView(img, new LinearLayout.LayoutParams(px(44), px(44)));
+
+    TextView text = new TextView(this);
+    text.setText(label);
+    text.setTextColor(Color.WHITE);
+    text.setTextSize(17);
+    text.setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL));
+    text.setGravity(Gravity.CENTER);
+    text.setPadding(0, px(10), 0, 0);
+    tile.addView(text);
+
+    LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(px(140), px(128));
+    lp.leftMargin = lp.rightMargin = px(8);
+    row.addView(tile, lp);
   }
 
   @Override protected void onResume() {
@@ -98,11 +157,15 @@ public class HomeActivity extends Activity {
     left = COUNTDOWN_SEC;
     h.removeCallbacks(tick);
     h.post(tick);
+    bar.animate().cancel();
+    bar.setScaleX(0);
+    bar.animate().scaleX(1).setDuration(COUNTDOWN_SEC * 1000L).setInterpolator(new LinearInterpolator()).start();
   }
 
   @Override protected void onPause() {
     super.onPause();
     h.removeCallbacks(tick);
+    bar.animate().cancel();
   }
 
   @Override public void onBackPressed() { /* this is the home screen: nowhere to go back to */ }

@@ -5,6 +5,18 @@
    The clock is the one bold thing; everything else stays quiet.
    ========================================================================= */
 
+/* Manrope (variable, weights 400-800, Latin only, 24 KB) is served with the site so it
+   works offline; other scripts fall back to the system font. Tabular digits keep the clock steady. */
+@font-face {
+  font-family: "Manrope";
+  font-style: normal;
+  font-weight: 400 800;
+  font-display: swap;
+  src: url("fonts/manrope-latin.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308,
+    U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
 :root {
   --ink: #ffffff;
   --ink-2: rgba(255, 255, 255, 0.72);
@@ -14,7 +26,7 @@
   --surface: rgba(255, 255, 255, 0.09);
   --surface-press: rgba(255, 255, 255, 0.18);
   --edge: max(14px, 2.4vw);
-  --font: Roboto, "Google Sans", Inter, system-ui, -apple-system, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  --font: Manrope, Roboto, system-ui, -apple-system, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
 }
 
 * { box-sizing: border-box; }
@@ -129,15 +141,15 @@ body.s-today .ev-minor { color: var(--ink); }
 }
 #clockBlock { text-align: center; font-size: 200px; }
 #time {
-  font-weight: 900;
+  font-weight: 800;
   line-height: 1;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.03em;
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
 }
 #date {
   font-size: 0.17em;
-  font-weight: 400;
+  font-weight: 500;
   line-height: 1.25;
   color: var(--ink-2);
   margin-top: 0.12em;
@@ -257,6 +269,204 @@ body.s-tomorrow .cd:first-child .cd-label { font-weight: 700; }
   animation: talk-pulse 1.2s ease-in-out infinite;
 }
 #miniTalk.is-playing { background: var(--surface-press); }
+
+/* ---- Kitchen timer button: round when idle, a countdown pill when running -- */
+#timerBtn {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: clamp(64px, 9vh, 84px);
+  height: clamp(64px, 9vh, 84px);
+  margin: 0 max(8px, 1vw) 0 0;
+  padding: 0 clamp(14px, 2.2vh, 20px);
+  border: 0;
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--ink);
+  cursor: pointer;
+  font-variant-numeric: tabular-nums;
+}
+#timerBtn:active { background: var(--surface-press); }
+.tb-icon { display: flex; }
+.tb-icon svg { width: clamp(30px, 4.4vh, 38px); height: clamp(30px, 4.4vh, 38px); fill: currentColor; }
+.tb-text {
+  margin-left: 10px;
+  font-size: clamp(26px, 4.2vh, 40px);
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
+.tb-more {
+  margin-left: 8px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.2);
+  font-size: clamp(13px, 1.9vh, 16px);
+  font-weight: 700;
+}
+#timerBtn.is-paused .tb-text { opacity: 0.55; }
+#timerBtn.is-due { background: #d93025; animation: talk-pulse 1.2s ease-in-out infinite; }
+
+/* ---- Timer sheet ---------------------------------------------------------- */
+#tm {
+  --ink-2: rgba(255, 255, 255, 0.72);
+  --ink-3: rgba(255, 255, 255, 0.45);
+  --surface: rgba(255, 255, 255, 0.09);
+  --surface-press: rgba(255, 255, 255, 0.18);
+  position: fixed;
+  top: 0; right: 0; bottom: 0; left: 0;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  background: #0d0d0f;
+  color: #fff;
+  visibility: hidden;
+  transform: translateY(100%);
+  transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.25, 1), visibility 0s linear 0.3s;
+}
+#tm.open {
+  visibility: visible;
+  transform: none;
+  transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.25, 1), visibility 0s;
+}
+.tm-head {
+  flex: none;
+  display: flex;
+  align-items: center;
+  height: 64px;
+  padding: 0 max(8px, 1.6vw);
+}
+.tm-head h2 { margin: 0 0 0 8px; font-size: 22px; font-weight: 700; }
+.tm-body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  gap: max(16px, 2.5vw);
+  padding: 0 max(16px, 3vw) max(16px, 3vh);
+}
+.tm-new {
+  flex: none;
+  width: min(40%, 460px);
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-areas: "time time" "minus plus" "start start";
+  gap: max(12px, 2vh);
+  align-content: center;
+  padding: max(16px, 3vh) max(16px, 2vw);
+  border-radius: 24px;
+  background: var(--surface);
+}
+.tm-new-time {
+  grid-area: time;
+  text-align: center;
+  font-size: clamp(56px, 11vh, 110px);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+#tmMinus { grid-area: minus; }
+#tmPlus { grid-area: plus; }
+.tm-step, .tm-row-step {
+  border: 0;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.12);
+  font-weight: 800;
+  cursor: pointer;
+}
+.tm-step { height: clamp(64px, 11vh, 96px); font-size: clamp(26px, 4.5vh, 38px); }
+.tm-step:active, .tm-row-step:active { background: rgba(255, 255, 255, 0.24); }
+.tm-start {
+  grid-area: start;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: clamp(64px, 11vh, 96px);
+  border: 0;
+  border-radius: 999px;
+  background: #fff;
+  color: #000;
+  font-size: clamp(22px, 3.8vh, 32px);
+  font-weight: 800;
+  cursor: pointer;
+}
+.tm-start:active { background: #d9d9d9; }
+.tm-start span { display: flex; margin-right: 8px; }
+.tm-start svg { width: 1.3em; height: 1.3em; fill: currentColor; }
+
+.tm-list {
+  flex: 1;
+  min-width: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: max(10px, 1.6vh);
+}
+.tm-list.is-empty::before {
+  content: "No timers running. Pick a time and press Start.";
+  margin: auto;
+  color: var(--ink-3);
+  font-size: 20px;
+}
+.tm-row {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: max(8px, 1vw);
+  padding: max(12px, 2vh) max(14px, 1.6vw);
+  border-radius: 20px;
+  background: var(--surface);
+}
+.tm-row-info { flex: 1; min-width: 0; }
+.tm-row-name { font-size: clamp(15px, 2.4vh, 19px); color: var(--ink-2); font-weight: 600; }
+.tm-row-time {
+  font-size: clamp(40px, 7.5vh, 68px);
+  font-weight: 800;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+.tm-row-track { height: 6px; margin-top: 8px; border-radius: 999px; background: rgba(255, 255, 255, 0.14); overflow: hidden; }
+.tm-row-track i { display: block; height: 100%; width: 0; background: #fff; border-radius: inherit; transition: width 0.6s linear; }
+.tm-row.is-paused .tm-row-time { opacity: 0.5; }
+.tm-row.is-due { background: rgba(217, 48, 37, 0.35); }
+.tm-row-step { width: clamp(56px, 9vh, 76px); height: clamp(56px, 9vh, 76px); font-size: clamp(20px, 3.4vh, 28px); }
+.tm-row-btn { width: clamp(52px, 8.5vh, 72px); height: clamp(52px, 8.5vh, 72px); }
+.tm-row-btn svg { width: 32px; height: 32px; }
+
+/* ---- Timer done: unmissable from across the room -------------------------- */
+#tmAlert {
+  position: fixed;
+  top: 0; right: 0; bottom: 0; left: 0;
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 4vh 4vw;
+  text-align: center;
+  color: #fff;
+  background: #b3261e;
+  animation: tm-flash 1.6s ease-in-out infinite;
+}
+@keyframes tm-flash { 0%, 100% { background: #b3261e; } 50% { background: #e8453c; } }
+.tma-icon svg { width: clamp(72px, 14vh, 120px); height: clamp(72px, 14vh, 120px); fill: currentColor; }
+.tma-title { margin-top: 1vh; font-size: clamp(48px, 11vh, 110px); font-weight: 800; line-height: 1.05; letter-spacing: -0.02em; }
+.tma-sub { margin-top: 1.4vh; font-size: clamp(18px, 3.2vh, 28px); color: rgba(255, 255, 255, 0.9); }
+.tma-buttons { display: flex; gap: max(14px, 2vw); margin-top: 5vh; }
+.tma-buttons button {
+  min-width: clamp(160px, 22vw, 260px);
+  height: clamp(68px, 12vh, 100px);
+  border-radius: 999px;
+  font-size: clamp(24px, 4.4vh, 38px);
+  font-weight: 800;
+  cursor: pointer;
+}
+#tmAlertMore { border: 3px solid rgba(255, 255, 255, 0.85); background: transparent; color: #fff; }
+#tmAlertStop { border: 0; background: #fff; color: #b3261e; }
+
+@media (orientation: portrait) {
+  .tm-body { flex-direction: column; }
+  .tm-new { width: auto; }
+}
 @keyframes talk-pulse {
   0%, 100% { box-shadow: 0 0 0 0 rgba(217, 48, 37, 0.6); }
   50% { box-shadow: 0 0 0 12px rgba(217, 48, 37, 0); }
@@ -695,4 +905,6 @@ body.s-tomorrow .cd:first-child .cd-label { font-weight: 700; }
   .cd-fill { transition: none; }
   .ibtn.is-buffering::after { animation: none; border-color: var(--ink-3); }
   #miniTalk.is-recording { animation: none; }
+  #timerBtn.is-due, #tmAlert { animation: none; }
+  #tm, #tm.open { transition: none; }
 }

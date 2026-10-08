@@ -9,10 +9,12 @@
 <meta name="mobile-web-app-capable" content="yes">
 <link rel="manifest" href="manifest.json">
 <link rel="icon" type="image/png" href="icons/icon-192.png">
-<link rel="stylesheet" href="style.css?v=3.2.0">
-<script defer src="app.js?v=3.2.0"></script>
-<script defer src="player.js?v=3.2.0"></script>
-<script defer src="intercom.js?v=3.2.0"></script>
+<link rel="preload" href="fonts/manrope-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="style.css?v=3.3.0">
+<script defer src="app.js?v=3.3.0"></script>
+<script defer src="player.js?v=3.3.0"></script>
+<script defer src="intercom.js?v=3.3.0"></script>
+<script defer src="timers.js?v=3.3.0"></script>
 </head>
 <body class="s-calm">
 <noscript><div class="noscript">Javascript is not supported on this browser</div></noscript>
@@ -31,6 +33,10 @@
   <div id="bottom">
     <div id="bars"></div>
     <div id="dock">
+    <!-- Kitchen timers: shows the next timer counting down once one runs. -->
+    <button id="timerBtn" type="button" aria-label="Kitchen timers">
+      <span class="tb-icon" data-icon="timer"></span><span id="timerBtnText" class="tb-text" hidden></span><span id="timerBtnMore" class="tb-more" hidden></span>
+    </button>
     <div id="mini">
       <button id="miniOpen" type="button" aria-label="Open music player">
         <span class="mini-art"><img id="miniArt" alt="" hidden><span id="miniPh" class="art-ph" data-icon="note"></span></span>
@@ -108,6 +114,33 @@
     </div>
   </div>
 </section>
+
+<!-- Kitchen timers: slides up when the timer button is tapped. -->
+<section id="tm" aria-label="Kitchen timers" aria-hidden="true">
+  <header class="tm-head">
+    <button id="tmClose" class="ibtn" type="button" aria-label="Close timers" data-icon="down"></button>
+    <h2>Kitchen timers</h2>
+  </header>
+  <div class="tm-body">
+    <div class="tm-new">
+      <button id="tmMinus" class="tm-step" type="button" aria-label="One minute less">−1</button>
+      <div id="tmNewTime" class="tm-new-time">20 min</div>
+      <button id="tmPlus" class="tm-step" type="button" aria-label="One minute more">+1</button>
+      <button id="tmStart" class="tm-start" type="button"><span data-icon="play"></span>Start</button>
+    </div>
+    <div id="tmList" class="tm-list is-empty"></div>
+  </div>
+</section>
+
+<div id="tmAlert" role="alertdialog" aria-labelledby="tmAlertTitle" hidden>
+  <div class="tma-icon" data-icon="timer"></div>
+  <div id="tmAlertTitle" class="tma-title">Timer done</div>
+  <div id="tmAlertSub" class="tma-sub"></div>
+  <div class="tma-buttons">
+    <button id="tmAlertMore" type="button">+1 min</button>
+    <button id="tmAlertStop" type="button">Stop</button>
+  </div>
+</div>
 
 <div id="diag" role="dialog" aria-label="Diagnostics" hidden>
   <div class="diag-head">

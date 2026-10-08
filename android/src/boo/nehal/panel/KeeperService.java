@@ -13,7 +13,9 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.media.AudioAttributes;
 import android.media.AudioFocusRequest;
+import android.media.AudioFormat;
 import android.media.AudioManager;
+import android.media.AudioTrack;
 import android.media.MediaPlayer;
 import android.net.wifi.WifiManager;
 import android.os.Handler;
@@ -31,9 +33,13 @@ import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
-import java.util.List;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
+import org.json.JSONArray;
+import org.json.JSONObject;
 
 /**
  * Runs all the time:
@@ -44,6 +50,8 @@ import java.util.Set;
  *  - intercom on http://127.0.0.1:8791 for the clock page:
  *      GET  /ping             -> {"ok":true}
  *      GET  /open-clock       reopen the clock as the full-screen app (page idle in a normal tab)
+ *      POST /alarm/schedule   {"timers":[{"id","end"}]}: the kitchen timers' end times; rings when
+ *                             one passes (TV + music paused, volume up) until it leaves the list
  *      GET  /intercom/begin   pause TV + music (temporary audio focus) while recording
  *      POST /intercom/play    body = recorded audio; plays it at full volume, then restores
  *                             the volume and hands audio back to the TV / music
@@ -126,6 +134,7 @@ public class KeeperService extends Service {
     try { unregisterReceiver(volumeChanged); } catch (IllegalArgumentException notRegistered) {}
     try { if (server != null) server.close(); } catch (Exception ignored) {}
     endIntercom();
+    if (alarmTrack != null) stopRinging();
     if (wifiLock != null) wifiLock.release();
     if (cpuLock != null) cpuLock.release();
     super.onDestroy();
@@ -157,7 +166,7 @@ public class KeeperService extends Service {
     }
     btOffCount = 0;
     if (sink == null) { bindSink(); return; }
-    if (player != null) return;  // don't page the TV mid-announcement
+    if (player != null || alarmTrack != null) return;  // don't page the TV mid-announcement or alarm
 
     int[] busy = { BluetoothProfile.STATE_CONNECTED, BluetoothProfile.STATE_CONNECTING };
     if (!sink.getDevicesMatchingConnectionStates(busy).isEmpty()) return;  // TV or a phone is on already
@@ -257,6 +266,99 @@ public class KeeperService extends Service {
     restoredVolume = -1;
   };
 
+  /* ---- Kitchen timers: ring when one of the page's timers ends -------------- */
+  static final int ALARM_VOLUME_PERCENT = 80;   // at least this loud while ringing
+  static final long ALARM_MAX_MS = 180000;      // stop ringing by itself after 3 minutes
+  private final Map<String, Long> timerEnds = new HashMap<>();
+  private final Set<String> timedOut = new HashSet<>();  // rang for 3 minutes unanswered: don't restart
+  private AudioTrack alarmTrack;
+  private AudioFocusRequest alarmFocus;
+  private int alarmSavedVolume = -1;
+  private long ringingSince;
+
+  /** The page sends every running timer's end time whenever anything changes. */
+  private void scheduleTimers(Map<String, Long> ends) {
+    timerEnds.clear();
+    timerEnds.putAll(ends);
+    timedOut.retainAll(ends.keySet());
+    checkTimers();
+  }
+
+  private final Runnable timerCheck = this::checkTimers;
+
+  private void checkTimers() {
+    main.removeCallbacks(timerCheck);
+    long now = System.currentTimeMillis(), next = Long.MAX_VALUE;
+    boolean due = false;
+    for (Map.Entry<String, Long> e : timerEnds.entrySet()) {
+      if (timedOut.contains(e.getKey())) continue;
+      if (e.getValue() <= now) due = true;
+      else next = Math.min(next, e.getValue());
+    }
+    if (due && alarmTrack == null) startRinging();
+    if (!due && alarmTrack != null) stopRinging();
+    if (alarmTrack != null && now - ringingSince > ALARM_MAX_MS) {
+      for (Map.Entry<String, Long> e : timerEnds.entrySet()) if (e.getValue() <= now) timedOut.add(e.getKey());
+      stopRinging();
+    }
+    long wait = alarmTrack != null ? 1000 : next - now;
+    if (wait < Long.MAX_VALUE / 2) main.postDelayed(timerCheck, Math.max(50, Math.min(wait, 60000)));
+  }
+
+  private void startRinging() {
+    Log.i(TAG, "timer done: ringing");
+    ringingSince = System.currentTimeMillis();
+    AudioAttributes attrs = new AudioAttributes.Builder()
+        .setUsage(AudioAttributes.USAGE_MEDIA).setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION).build();
+    alarmFocus = new AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN_TRANSIENT)  // TV + music pause
+        .setAudioAttributes(attrs).setOnAudioFocusChangeListener(c -> {}).build();
+    am.requestAudioFocus(alarmFocus);
+    int max = am.getStreamMaxVolume(AudioManager.STREAM_MUSIC), cur = am.getStreamVolume(AudioManager.STREAM_MUSIC);
+    alarmSavedVolume = cur;
+    am.setStreamVolume(AudioManager.STREAM_MUSIC, Math.max(cur, max * ALARM_VOLUME_PERCENT / 100), 0);
+    short[] pcm = chime();
+    alarmTrack = new AudioTrack.Builder()
+        .setAudioAttributes(attrs)
+        .setAudioFormat(new AudioFormat.Builder().setEncoding(AudioFormat.ENCODING_PCM_16BIT)
+            .setSampleRate(CHIME_RATE).setChannelMask(AudioFormat.CHANNEL_OUT_MONO).build())
+        .setTransferMode(AudioTrack.MODE_STATIC)
+        .setBufferSizeInBytes(pcm.length * 2)
+        .build();
+    alarmTrack.write(pcm, 0, pcm.length);
+    alarmTrack.setLoopPoints(0, pcm.length, -1);
+    alarmTrack.play();
+  }
+
+  private void stopRinging() {
+    Log.i(TAG, "timer alarm stopped");
+    if (alarmTrack != null) {
+      try { alarmTrack.stop(); } catch (Exception ignored) {}
+      alarmTrack.release();
+      alarmTrack = null;
+    }
+    if (alarmSavedVolume >= 0) { am.setStreamVolume(AudioManager.STREAM_MUSIC, alarmSavedVolume, 0); alarmSavedVolume = -1; }
+    if (alarmFocus != null) { am.abandonAudioFocusRequest(alarmFocus); alarmFocus = null; }
+  }
+
+  static final int CHIME_RATE = 44100;
+
+  /** A rising three-note chime (C6 E6 G6) and a pause: 2 s, played in a loop. */
+  private static short[] chime() {
+    double[] notes = { 1046.5, 1318.5, 1568.0 };
+    short[] pcm = new short[CHIME_RATE * 2];
+    for (int k = 0; k < notes.length; k++) {
+      int start = (int) (k * 0.22 * CHIME_RATE), len = (int) (0.7 * CHIME_RATE);
+      for (int i = 0; i < len && start + i < pcm.length; i++) {
+        double t = (double) i / CHIME_RATE;
+        double env = Math.min(1, t / 0.01) * Math.exp(-t / 0.16);
+        double s = Math.sin(2 * Math.PI * notes[k] * t) + 0.25 * Math.sin(4 * Math.PI * notes[k] * t);
+        int v = pcm[start + i] + (int) (s / 1.25 * env * 0.5 * 32767);
+        pcm[start + i] = (short) Math.max(-32768, Math.min(32767, v));
+      }
+    }
+    return pcm;
+  }
+
   /* ---- Tiny HTTP server on 127.0.0.1 --------------------------------------- */
   private void startServer() {
     Thread t = new Thread(() -> {
@@ -317,6 +419,18 @@ public class KeeperService extends Service {
           });
           reply(out, 200, origin, "{\"ok\":true}");
           break;
+        case "/alarm/schedule": {
+          if (length <= 0 || length > 65536) { reply(out, 400, origin, "{\"error\":\"no timers\"}"); break; }
+          JSONArray list = new JSONObject(new String(readBody(in, length), StandardCharsets.UTF_8)).getJSONArray("timers");
+          Map<String, Long> ends = new HashMap<>();
+          for (int i = 0; i < list.length(); i++) {
+            JSONObject t = list.getJSONObject(i);
+            ends.put(t.getString("id"), t.getLong("end"));
+          }
+          main.post(() -> scheduleTimers(ends));
+          reply(out, 200, origin, "{\"ok\":true,\"timers\":" + ends.size() + "}");
+          break;
+        }
         case "/intercom/begin":
           main.post(this::beginIntercom);
           reply(out, 200, origin, "{\"ok\":true}");
