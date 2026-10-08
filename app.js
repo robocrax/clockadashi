@@ -7,7 +7,7 @@
   'use strict';
 
   /* ---- Settings ---------------------------------------------------------- */
-  var VERSION = '3.6.0';
+  var VERSION = '3.7.0';
   var COUNTDOWN_DAYS = 8;      // a ProgressBar event gets its bar this many days ahead
   var APPROACH_DAYS = 4;       // purple tint from this many days out, until the red day before
   var PAD_HOURS = true;        // 08:05 rather than 8:05, so the clock never changes width
@@ -52,6 +52,7 @@
     eq: 'M7 18h2V6H7v12zm4 4h2V2h-2v20zm-8-8h2v-4H3v4zm12 4h2V6h-2v12zm4-8v4h2v-4h-2z',
     search: 'M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z',
     add: 'M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z',
+    calendar: 'M19 4h-1V2h-2v2H8V2H6v2H5c-1.11 0-1.99.9-1.99 2L3 20c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V10h14v10zm0-12H5V6h14v2zM7 12h5v5H7z',
     mic: 'M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5.3-3c0 3-2.54 5.1-5.3 5.1S6.7 14 6.7 11H5c0 3.41 2.72 6.23 6 6.72V21h2v-3.28c3.28-.48 6-3.3 6-6.72h-1.7z',
     minus: 'M19 13H5v-2h14v2z',
     remove: 'M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z',
@@ -118,8 +119,10 @@
 
   /* ---- Time ---------------------------------------------------------------
      ?now=2026-10-21T20:00 previews any moment (the clock runs on from there),
-     handy for checking the red and saffron days without editing events.csv. */
-  var offsetMs = 0;
+     handy for checking the red and saffron days without editing events.csv.
+     The calendar button (top-left) previews another date on the screen itself:
+     only the date changes, the time of day stays real. */
+  var offsetMs = 0, previewDay = null;  // previewDay: { y, m (0-11), d }
   (function () {
     var m = /[?&]now=([^&#]+)/.exec(location.search);
     if (!m) return;
@@ -128,7 +131,13 @@
     var t = Date.parse(s);  // no zone given, so it's read as the tablet's local time
     if (!isNaN(t)) offsetMs = t - Date.now();
   })();
-  function now() { return new Date(Date.now() + offsetMs); }
+  function now() {
+    if (previewDay) {  // the real time of day, on the previewed date
+      var r = new Date();
+      return new Date(previewDay.y, previewDay.m, previewDay.d, r.getHours(), r.getMinutes(), r.getSeconds(), r.getMilliseconds());
+    }
+    return new Date(Date.now() + offsetMs);
+  }
   CK.now = now;
 
   /* ---- Calendar (events.csv) ---------------------------------------------- */
@@ -395,7 +404,7 @@
 
   /* ---- Corner status: offline, first calendar load, songs being saved ------ */
   var statuses = {};
-  var STATUS_ORDER = ['offline', 'calendar', 'music'];
+  var STATUS_ORDER = ['preview', 'offline', 'calendar', 'music'];
   CK.setStatus = function (key, text, icon) {
     var next = text ? { text: text, icon: icon || '' } : null;
     var prev = statuses[key];
@@ -415,7 +424,7 @@
       el.statusIcon.hidden = !s.icon;
       if (s.icon) setIcon(el.statusIcon, s.icon);
     }
-    var reserve = s ? Math.max(statusReserve, el.status.offsetWidth + 20) : 0;
+    var reserve = s ? Math.max(statusReserve, el.status.offsetLeft + el.status.offsetWidth + 12) : 0;
     if (reserve !== statusReserve) { statusReserve = reserve; queueLayout(); }
   }
 
@@ -610,6 +619,47 @@
       .then(function () { log('screen', 'idle in a browser tab: reopened as the full-screen app'); }, noop);
   }
 
+  /* ---- Date preview: the calendar button, top-left --------------------------
+     Shows the screen as it will look on another day (colours, events, countdown
+     bars, date). Only the date changes, never the time. Nothing is saved: a
+     reload shows today, and so does PREVIEW_IDLE_MIN untouched. */
+  var PREVIEW_IDLE_MIN = 5;
+  function isoDay(d) { return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate()); }
+  function setPreview(day) {
+    var today = new Date();
+    if (day && day.y === today.getFullYear() && day.m === today.getMonth() && day.d === today.getDate()) day = null;
+    previewDay = day;
+    if (day) offsetMs = 0;  // the button wins over ?now=
+    var d = now();
+    // kept short: today's events are centred clear of the status, so a long one squeezes them
+    CK.setStatus('preview', day ? 'Previewing ' + WEEKDAYS[d.getDay()].slice(0, 3) + ' ' + d.getDate() + ' ' +
+      MONTHS[d.getMonth()].slice(0, 3) : '', 'calendar');
+    el.calBtn.classList.toggle('is-on', !!day);
+    el.calBtn.setAttribute('aria-label', day ? 'Back to today' : 'Preview another date');
+    log('preview', day ? 'showing ' + isoDay(d) : 'back to today');
+    renderMinute(d);
+  }
+  function pickPreviewDate() {
+    if (previewDay) { setPreview(null); return; }  // a second tap ends the preview
+    var input = el.calInput, today = new Date();
+    input.min = isoDay(today);
+    input.max = isoDay(new Date(today.getFullYear() + 2, today.getMonth(), today.getDate()));
+    input.value = isoDay(today);
+    try {
+      if (input.showPicker) input.showPicker();
+      else input.click();
+    } catch (e) {
+      input.focus();
+    }
+  }
+  function previewPicked() {
+    var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(el.calInput.value);
+    if (m) setPreview({ y: +m[1], m: +m[2] - 1, d: +m[3] });
+  }
+  function endPreviewWhenIdle() {
+    if (previewDay && Date.now() - lastTouch > PREVIEW_IDLE_MIN * 60000) setPreview(null);
+  }
+
   /* ---- Keep the screen on -------------------------------------------------- */
   var wakeLock = null;
   function keepAwake() {
@@ -631,7 +681,7 @@
 
   function openDiag() {
     var lines = [
-      'Clockadashi ' + VERSION + (offsetMs ? '  (previewing ' + when(now().getTime()) + ')' : ''),
+      'Clockadashi ' + VERSION + (offsetMs || previewDay ? '  (previewing ' + when(now().getTime()) + ')' : ''),
       'Network: ' + (net.online ? 'online' : 'OFFLINE') + ' since ' + when(net.changedAt) +
         '; server last reached ' + when(net.lastOk),
       'Calendar last checked: ' + when(+lsGet(LS_SYNCED)),
@@ -666,6 +716,7 @@
 
   function boot() {
     ['screen', 'top', 'clockArea', 'clockBlock', 'time', 'minuteRing', 'hh', 'mm', 'date', 'bars', 'status', 'statusIcon',
+      'calBtn', 'calInput',
       'statusText', 'fsBtn', 'diag', 'diagText', 'diagClose', 'diagClear'].forEach(function (id) { el[id] = $(id); });
     Array.prototype.forEach.call(document.querySelectorAll('[data-icon]'), function (node) {
       setIcon(node, node.getAttribute('data-icon'));
@@ -702,6 +753,9 @@
       enterFullscreen();
     });
     el.fsBtn.addEventListener('click', function () { if (fsElement()) exitFullscreen(); else enterFullscreen(); });
+    el.calBtn.addEventListener('click', pickPreviewDate);
+    el.calInput.addEventListener('change', previewPicked);
+    setInterval(endPreviewWhenIdle, 15000);
     var fsSupported = !!(document.documentElement.requestFullscreen || document.documentElement.webkitRequestFullscreen);
     el.fsBtn.hidden = !fsSupported || displayMode() === 'fullscreen';
     document.addEventListener('fullscreenchange', renderFsButton);

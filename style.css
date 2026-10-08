@@ -163,20 +163,21 @@ body.s-today .ev-minor { color: var(--ink); }
 }
 
 /* The minute ring round HH:MM (shaped and filled by app.js): a faint full
-   track, and the elapsed part as a white line with a soft warm glow made of
-   three wide, fading strokes (cheaper than a blur on the panel). */
+   track, and the elapsed part as a light grey line with a soft glow made of
+   three wide, fading strokes (cheaper than a blur on the panel). Kept quieter
+   than the countdown bars, which matter more. */
 #minuteRing { position: absolute; top: 0; left: 0; overflow: visible; pointer-events: none; }
 #minuteRing path { fill: none; stroke-linecap: round; stroke-linejoin: round; }
-.mr-track { stroke: rgba(255, 255, 255, 0.1); stroke-width: var(--mr-w, 8px); }
+.mr-track { stroke: rgba(255, 255, 255, 0.06); stroke-width: var(--mr-w, 8px); }
 .mr-line, .mr-glow {
   stroke-dasharray: 100;
   stroke-dashoffset: 100;
   transition: stroke-dashoffset 0.6s cubic-bezier(0.3, 0.7, 0.4, 1);
 }
-.mr-line { stroke: #fff; stroke-width: var(--mr-w, 8px); }
-.mr-glow-1 { stroke: rgba(255, 236, 190, 0.32); stroke-width: calc(var(--mr-w, 8px) * 1.9); }
-.mr-glow-2 { stroke: rgba(255, 226, 170, 0.13); stroke-width: calc(var(--mr-w, 8px) * 3.3); }
-.mr-glow-3 { stroke: rgba(255, 214, 150, 0.06); stroke-width: calc(var(--mr-w, 8px) * 5.2); }
+.mr-line { stroke: rgba(255, 255, 255, 0.4); stroke-width: var(--mr-w, 8px); }
+.mr-glow-1 { stroke: rgba(255, 255, 255, 0.09); stroke-width: calc(var(--mr-w, 8px) * 1.9); }
+.mr-glow-2 { stroke: rgba(255, 255, 255, 0.045); stroke-width: calc(var(--mr-w, 8px) * 3.3); }
+.mr-glow-3 { stroke: rgba(255, 255, 255, 0.02); stroke-width: calc(var(--mr-w, 8px) * 5.2); }
 #minuteRing.mr-snap .mr-line, #minuteRing.mr-snap .mr-glow { transition: none; }
 #date {
   font-size: 0.17em;
@@ -414,8 +415,8 @@ body.timers-on .tf-label { margin-left: 8px; font-size: clamp(16px, 2.7vh, 22px)
 /* ---- Corners: connection / saving status, full-screen toggle ----------- */
 #status {
   position: fixed;
-  top: max(10px, 1.8vh);
-  left: var(--edge);
+  top: calc(max(2px, 0.8vh) + 10px);    /* level with the calendar button */
+  left: calc(max(2px, 0.8vw) + 52px);   /* just right of it */
   display: flex;
   align-items: center;
   height: 28px;
@@ -430,6 +431,27 @@ body.timers-on .tf-label { margin-left: 8px; font-size: clamp(16px, 2.7vh, 22px)
   top: max(2px, 0.8vh);
   right: max(2px, 0.8vw);
   opacity: 0.35;
+}
+/* Date preview, top-left: barely there until a preview is on. */
+#calBtn {
+  position: fixed;
+  top: max(2px, 0.8vh);
+  left: max(2px, 0.8vw);
+  opacity: 0.16;
+}
+#calBtn svg { width: 24px; height: 24px; }
+#calBtn.is-on { opacity: 1; background: var(--surface-press); }
+/* The date field only opens the browser's date picker; it is never seen. */
+#calInput {
+  position: fixed;
+  top: max(2px, 0.8vh);
+  left: max(2px, 0.8vw);
+  width: 48px;
+  height: 48px;
+  opacity: 0;
+  pointer-events: none;
+  border: 0;
+  padding: 0;
 }
 
 @media (orientation: portrait) {

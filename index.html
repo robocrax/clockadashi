@@ -10,11 +10,11 @@
 <link rel="manifest" href="manifest.json">
 <link rel="icon" type="image/png" href="icons/icon-192.png">
 <link rel="preload" href="fonts/GoogleSansFlex-clockadashi.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="style.css?v=3.6.0">
-<script defer src="app.js?v=3.6.0"></script>
-<script defer src="player.js?v=3.6.0"></script>
-<script defer src="intercom.js?v=3.6.0"></script>
-<script defer src="timers.js?v=3.6.0"></script>
+<link rel="stylesheet" href="style.css?v=3.7.0">
+<script defer src="app.js?v=3.7.0"></script>
+<script defer src="player.js?v=3.7.0"></script>
+<script defer src="intercom.js?v=3.7.0"></script>
+<script defer src="timers.js?v=3.7.0"></script>
 </head>
 <body class="s-calm">
 <noscript><div class="noscript">Javascript is not supported on this browser</div></noscript>
@@ -76,6 +76,9 @@
 
 <div id="status" hidden><span id="statusIcon" hidden></span><span id="statusText"></span></div>
 <button id="fsBtn" class="ibtn" type="button" aria-label="Full screen" data-icon="fullscreen"></button>
+<!-- Barely visible: preview how the screen will look on another date (date only, never the time). -->
+<button id="calBtn" class="ibtn" type="button" aria-label="Preview another date" data-icon="calendar"></button>
+<input id="calInput" type="date" tabindex="-1" aria-hidden="true">
 
 <!-- Full player: slides up when the mini player is tapped. -->
 <section id="fp" aria-label="Music player" aria-hidden="true">
