@@ -3,18 +3,18 @@
    black most days, a slow purple drift as one approaches, red (#830300)
    the day before, saffron (#ed6d19) on the day itself.
    The clock is the one bold thing; everything else stays quiet.
+   Kitchen timers use a cool blue, so they never read as a calendar alert.
    ========================================================================= */
 
-/* Manrope (variable, weights 400-800, Latin only, 24 KB) is served with the site so it
-   works offline; other scripts fall back to the system font. Tabular digits keep the clock steady. */
+/* Google Sans Flex (SIL Open Font License, fonts/OFL.txt), cut down to Latin and
+   the axes used here: weight 300-800, width 74-100%, roundness 0-30. */
 @font-face {
-  font-family: "Manrope";
+  font-family: "Google Sans Flex";
+  src: url("fonts/GoogleSansFlex-clockadashi.woff2") format("woff2");
+  font-weight: 300 800;
+  font-stretch: 74% 100%;
   font-style: normal;
-  font-weight: 400 800;
   font-display: swap;
-  src: url("fonts/manrope-latin.woff2") format("woff2");
-  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308,
-    U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
 }
 
 :root {
@@ -25,8 +25,20 @@
   --bar-fill: #ffffff;
   --surface: rgba(255, 255, 255, 0.09);
   --surface-press: rgba(255, 255, 255, 0.18);
+  --timer: #1a6dff;
+  --timer-deep: #0a2f78;
   --edge: max(14px, 2.4vw);
-  --font: Manrope, Roboto, system-ui, -apple-system, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  --font: "Google Sans Flex", Roboto, system-ui, -apple-system, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+}
+
+/* Big numbers (clock, timers): narrower and slightly rounded, with digits of
+   equal width so nothing shifts as the seconds tick. */
+#time, .num {
+  font-weight: 740;
+  font-stretch: 74%;
+  font-variation-settings: "ROND" 30;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
 }
 
 * { box-sizing: border-box; }
@@ -124,6 +136,7 @@ button { font: inherit; color: inherit; }
   min-height: 44px;  /* keeps the clock clear of the corner status and button */
   text-align: center;
   font-weight: 800;
+  font-variation-settings: "ROND" 30;
   line-height: 1.1;
   letter-spacing: -0.01em;
   overflow-wrap: break-word;
@@ -141,15 +154,13 @@ body.s-today .ev-minor { color: var(--ink); }
 }
 #clockBlock { text-align: center; font-size: 200px; }
 #time {
-  font-weight: 800;
   line-height: 1;
-  letter-spacing: -0.03em;
+  letter-spacing: -0.01em;
   white-space: nowrap;
-  font-variant-numeric: tabular-nums;
 }
 #date {
   font-size: 0.17em;
-  font-weight: 500;
+  font-weight: 460;
   line-height: 1.25;
   color: var(--ink-2);
   margin-top: 0.12em;
@@ -277,50 +288,54 @@ body.s-tomorrow .cd:first-child .cd-label { font-weight: 700; }
 #miniTalk.is-playing { background: var(--surface-press); }
 
 /* ---- Kitchen timers, bottom-left ------------------------------------------
-   Idle: a "Timer" pill. Running: the next timer in digits readable across the
-   room, plus a card with the two after it. While timers run the countdown bars
-   move up a row (see #bottom), and the clock shrinks to make room. */
+   Idle: a "Timer" pill. Running: the next timer to finish in digits readable
+   across the room (with its progress ring), plus a card with the two after it.
+   While timers run the countdown bars move up a row (see #bottom), and the
+   clock shrinks to make room. Ringing turns the corner blue. */
 #timerDock { grid-area: timers; display: flex; align-items: flex-end; gap: max(10px, 1vw); }
-#timerBtn, #timerNext {
+#timerFab, #timerNext {
   flex: none;
   border: 0;
   background: var(--surface);
   color: var(--ink);
   cursor: pointer;
-  font-variant-numeric: tabular-nums;
   text-align: left;
 }
-#timerBtn:active, #timerNext:active { background: var(--surface-press); }
-#timerBtn {
+#timerFab:active, #timerNext:active { background: var(--surface-press); }
+#timerFab {
   display: flex;
   align-items: center;
   height: clamp(64px, 9vh, 84px);
   padding: 0 clamp(18px, 2.6vh, 26px) 0 clamp(14px, 2.2vh, 20px);
   border-radius: 999px;
 }
-.tb-head { display: flex; align-items: center; }
-.tb-icon { display: flex; }
-.tb-icon svg { width: clamp(30px, 4.4vh, 38px); height: clamp(30px, 4.4vh, 38px); fill: currentColor; }
-.tb-label { margin-left: 10px; font-size: clamp(20px, 3.3vh, 28px); font-weight: 700; white-space: nowrap; }
-body.timers-on #timerBtn {
+.tf-head { display: flex; align-items: center; }
+.tf-icon { display: flex; }
+.tf-icon svg { width: clamp(30px, 4.4vh, 38px); height: clamp(30px, 4.4vh, 38px); fill: currentColor; }
+.tf-label { margin-left: 10px; font-size: clamp(20px, 3.3vh, 28px); font-weight: 700; white-space: nowrap; }
+body.timers-on #timerFab {
   flex-direction: column;
   align-items: flex-start;
   height: auto;
   padding: clamp(10px, 1.6vh, 16px) clamp(18px, 2.2vw, 30px) clamp(12px, 1.8vh, 18px);
   border-radius: 26px;
 }
-body.timers-on .tb-icon svg { width: clamp(20px, 3vh, 26px); height: clamp(20px, 3vh, 26px); }
-body.timers-on .tb-label { margin-left: 8px; font-size: clamp(16px, 2.7vh, 22px); color: var(--ink-2); }
-.tb-time {
-  font-size: clamp(64px, 16vh, 150px);
-  font-weight: 800;
-  line-height: 0.95;
-  letter-spacing: -0.03em;
-  white-space: nowrap;
+body.timers-on .tf-label { margin-left: 8px; font-size: clamp(16px, 2.7vh, 22px); color: var(--ink-2); }
+.tf-ring, .tt-ring { flex: none; transform: rotate(-90deg); }
+.tf-ring { width: clamp(24px, 3.6vh, 32px); height: clamp(24px, 3.6vh, 32px); }
+.tf-track { fill: none; stroke: rgba(255, 255, 255, 0.2); stroke-width: 4; }
+.tf-arc, .tt-arc {
+  fill: none;
+  stroke: #8fb6ff;
+  stroke-width: 4;
+  stroke-linecap: round;
+  stroke-dasharray: 100.53;
+  transition: stroke-dashoffset 0.9s linear;
 }
-#timerBtn.is-paused .tb-time { opacity: 0.5; }
-#timerBtn.is-due { background: #d93025; animation: talk-pulse 1.2s ease-in-out infinite; }
-body.timers-on #timerBtn.is-due .tb-label { color: #fff; }
+.tf-time { font-size: clamp(64px, 16vh, 150px); line-height: 0.95; white-space: nowrap; }
+#timerFab.is-paused .tf-time { color: var(--ink-2); }
+#timerFab.is-ringing { background: var(--timer); }
+#timerFab.is-ringing .tf-label, #timerFab.is-ringing .tf-arc { color: #fff; stroke: #fff; }
 
 #timerNext {
   display: flex;
@@ -331,7 +346,7 @@ body.timers-on #timerBtn.is-due .tb-label { color: #fff; }
 }
 .tn-row { display: flex; flex-direction: column; }
 .tn-name { font-size: clamp(14px, 2.2vh, 18px); color: var(--ink-2); font-weight: 600; }
-.tn-time { font-size: clamp(34px, 7.5vh, 68px); font-weight: 800; line-height: 1; letter-spacing: -0.02em; }
+.tn-time { font-size: clamp(34px, 7.5vh, 68px); line-height: 1; }
 .tn-more .tn-name { display: none; }
 .tn-more .tn-time { font-size: clamp(15px, 2.4vh, 20px); font-weight: 700; color: var(--ink-2); }
 
@@ -371,166 +386,6 @@ body.timers-on #timerBtn.is-due .tb-label { color: #fff; }
   100% { transform: translateY(calc(100vh + 160px)) rotate(var(--spin)); opacity: 0; }
 }
 
-/* ---- Timer sheet ---------------------------------------------------------- */
-#tm {
-  --ink-2: rgba(255, 255, 255, 0.72);
-  --ink-3: rgba(255, 255, 255, 0.45);
-  --surface: rgba(255, 255, 255, 0.09);
-  --surface-press: rgba(255, 255, 255, 0.18);
-  position: fixed;
-  top: 0; right: 0; bottom: 0; left: 0;
-  z-index: 10;
-  display: flex;
-  flex-direction: column;
-  background: #0d0d0f;
-  color: #fff;
-  visibility: hidden;
-  transform: translateY(100%);
-  transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.25, 1), visibility 0s linear 0.3s;
-}
-#tm.open {
-  visibility: visible;
-  transform: none;
-  transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.25, 1), visibility 0s;
-}
-.tm-head {
-  flex: none;
-  display: flex;
-  align-items: center;
-  height: 64px;
-  padding: 0 max(8px, 1.6vw);
-}
-.tm-head h2 { margin: 0 0 0 8px; font-size: 22px; font-weight: 700; }
-.tm-body {
-  flex: 1;
-  min-height: 0;
-  display: flex;
-  gap: max(16px, 2.5vw);
-  padding: 0 max(16px, 3vw) max(16px, 3vh);
-}
-.tm-new {
-  flex: none;
-  width: min(40%, 460px);
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  grid-template-areas: "time time" "minus plus" "start start";
-  gap: max(12px, 2vh);
-  align-content: center;
-  padding: max(16px, 3vh) max(16px, 2vw);
-  border-radius: 24px;
-  background: var(--surface);
-}
-.tm-new-time {
-  grid-area: time;
-  text-align: center;
-  font-size: clamp(56px, 11vh, 110px);
-  font-weight: 800;
-  letter-spacing: -0.02em;
-  font-variant-numeric: tabular-nums;
-}
-#tmMinus { grid-area: minus; }
-#tmPlus { grid-area: plus; }
-.tm-step, .tm-row-step {
-  border: 0;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.12);
-  font-weight: 800;
-  cursor: pointer;
-}
-.tm-step { height: clamp(64px, 11vh, 96px); font-size: clamp(26px, 4.5vh, 38px); }
-.tm-step:active, .tm-row-step:active { background: rgba(255, 255, 255, 0.24); }
-.tm-start {
-  grid-area: start;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: clamp(64px, 11vh, 96px);
-  border: 0;
-  border-radius: 999px;
-  background: #fff;
-  color: #000;
-  font-size: clamp(22px, 3.8vh, 32px);
-  font-weight: 800;
-  cursor: pointer;
-}
-.tm-start:active { background: #d9d9d9; }
-.tm-start span { display: flex; margin-right: 8px; }
-.tm-start svg { width: 1.3em; height: 1.3em; fill: currentColor; }
-
-.tm-list {
-  flex: 1;
-  min-width: 0;
-  overflow-y: auto;
-  display: flex;
-  flex-direction: column;
-  gap: max(10px, 1.6vh);
-}
-.tm-list.is-empty::before {
-  content: "No timers running. Pick a time and press Start.";
-  margin: auto;
-  color: var(--ink-3);
-  font-size: 20px;
-}
-.tm-row {
-  flex: none;
-  display: flex;
-  align-items: center;
-  gap: max(8px, 1vw);
-  padding: max(12px, 2vh) max(14px, 1.6vw);
-  border-radius: 20px;
-  background: var(--surface);
-}
-.tm-row-info { flex: 1; min-width: 0; }
-.tm-row-name { font-size: clamp(15px, 2.4vh, 19px); color: var(--ink-2); font-weight: 600; }
-.tm-row-time {
-  font-size: clamp(40px, 7.5vh, 68px);
-  font-weight: 800;
-  line-height: 1.1;
-  font-variant-numeric: tabular-nums;
-}
-.tm-row-track { height: 6px; margin-top: 8px; border-radius: 999px; background: rgba(255, 255, 255, 0.14); overflow: hidden; }
-.tm-row-track i { display: block; height: 100%; width: 0; background: #fff; border-radius: inherit; transition: width 0.6s linear; }
-.tm-row.is-paused .tm-row-time { opacity: 0.5; }
-.tm-row.is-due { background: rgba(217, 48, 37, 0.35); }
-.tm-row-step { width: clamp(56px, 9vh, 76px); height: clamp(56px, 9vh, 76px); font-size: clamp(20px, 3.4vh, 28px); }
-.tm-row-btn { width: clamp(52px, 8.5vh, 72px); height: clamp(52px, 8.5vh, 72px); }
-.tm-row-btn svg { width: 32px; height: 32px; }
-
-/* ---- Timer done: unmissable from across the room -------------------------- */
-#tmAlert {
-  position: fixed;
-  top: 0; right: 0; bottom: 0; left: 0;
-  z-index: 30;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 4vh 4vw;
-  text-align: center;
-  color: #fff;
-  background: #b3261e;
-  animation: tm-flash 1.6s ease-in-out infinite;
-}
-@keyframes tm-flash { 0%, 100% { background: #b3261e; } 50% { background: #e8453c; } }
-.tma-icon svg { width: clamp(72px, 14vh, 120px); height: clamp(72px, 14vh, 120px); fill: currentColor; }
-.tma-title { margin-top: 1vh; font-size: clamp(48px, 11vh, 110px); font-weight: 800; line-height: 1.05; letter-spacing: -0.02em; }
-.tma-sub { margin-top: 1.4vh; font-size: clamp(18px, 3.2vh, 28px); color: rgba(255, 255, 255, 0.9); }
-.tma-buttons { display: flex; gap: max(14px, 2vw); margin-top: 5vh; }
-.tma-buttons button {
-  min-width: clamp(160px, 22vw, 260px);
-  height: clamp(68px, 12vh, 100px);
-  border-radius: 999px;
-  font-size: clamp(24px, 4.4vh, 38px);
-  font-weight: 800;
-  cursor: pointer;
-}
-#tmAlertMore { border: 3px solid rgba(255, 255, 255, 0.85); background: transparent; color: #fff; }
-#tmAlertStop { border: 0; background: #fff; color: #b3261e; }
-
-@media (orientation: portrait) {
-  .tm-body { flex-direction: column; }
-  .tm-new { width: auto; }
-}
 @keyframes talk-pulse {
   0%, 100% { box-shadow: 0 0 0 0 rgba(217, 48, 37, 0.6); }
   50% { box-shadow: 0 0 0 12px rgba(217, 48, 37, 0); }
@@ -931,6 +786,225 @@ body.timers-on #timerBtn.is-due .tb-label { color: #fff; }
   .fp-art-box { flex: none; height: 34vh; }
 }
 
+/* =========================================================================
+   Kitchen timers: big targets for floury hands, readable across the kitchen.
+   ========================================================================= */
+#tp {
+  --ink-2: rgba(255, 255, 255, 0.72);
+  --ink-3: rgba(255, 255, 255, 0.45);
+  --surface-press: rgba(255, 255, 255, 0.18);
+  position: fixed;
+  top: 0; right: 0; bottom: 0; left: 0;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  background: linear-gradient(180deg, #0b2550 0%, #000 72%);
+  color: #fff;
+  visibility: hidden;
+  transform: translateY(100%);
+  transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.25, 1), visibility 0s linear 0.3s;
+}
+#tp.open {
+  visibility: visible;
+  transform: none;
+  transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.25, 1), visibility 0s;
+}
+#tp .fp-headline { color: #fff; font-size: 18px; font-weight: 600; }
+.tp-body {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+  grid-column-gap: 4vw;
+  padding: 0 4vw max(14px, 3vh);
+}
+.tp-new {
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+.tp-stepper { display: flex; align-items: center; }
+.tp-step {
+  flex: none;
+  width: clamp(72px, 12vh, 108px);
+  height: clamp(72px, 12vh, 108px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.12);
+  cursor: pointer;
+  touch-action: none;
+}
+.tp-step svg { width: 46%; height: 46%; fill: #fff; }
+.tp-step:active { background: rgba(255, 255, 255, 0.26); }
+.tp-step:disabled { opacity: 0.3; }
+.tp-set {
+  min-width: 2.5em;
+  margin: 0 clamp(8px, 1.6vw, 28px);
+  text-align: center;
+  font-size: clamp(72px, min(10vw, 19vh), 168px);
+  line-height: 1;
+}
+.tp-set.is-long { font-size: clamp(56px, min(7.4vw, 14vh), 124px); }  /* 1:30:00 needs more room */
+.tp-start {
+  margin-top: clamp(24px, 6vh, 56px);
+  height: clamp(64px, 10vh, 84px);
+  padding: 0 52px;
+  border: 0;
+  border-radius: 999px;
+  background: #fff;
+  color: #000;
+  font-size: clamp(20px, 2.3vw, 28px);
+  font-weight: 700;
+  cursor: pointer;
+}
+.tp-start:active { background: rgba(255, 255, 255, 0.82); }
+.tp-side { min-height: 0; display: flex; flex-direction: column; justify-content: center; }
+.tp-heading { flex: none; margin: 0 0 12px; font-size: 18px; font-weight: 700; }
+.tp-list { flex: 0 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
+.tp-empty { margin: 0; font-size: 17px; line-height: 1.5; color: var(--ink-2); }
+
+.tt-row {
+  display: flex;
+  align-items: center;
+  padding: 12px 10px 12px 14px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.08);
+}
+.tt-row + .tt-row { margin-top: 10px; }
+.tt-row.is-ringing { background: var(--timer); }
+.tt-row.is-ringing .tt-arc { stroke: #fff; }
+.tt-badge { position: relative; flex: none; width: 56px; height: 56px; }
+.tt-ring { width: 100%; height: 100%; }
+.tt-n {
+  position: absolute;
+  top: 0; right: 0; bottom: 0; left: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 19px;
+  font-weight: 700;
+}
+.tt-text { flex: 1; min-width: 0; padding: 0 12px 0 16px; }
+.tt-left { display: block; font-size: clamp(34px, 4.2vw, 48px); line-height: 1.05; }
+.tt-row.is-paused .tt-left { color: var(--ink-2); }
+.tt-sub {
+  display: block;
+  margin-top: 2px;
+  font-size: 14px;
+  color: var(--ink-2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.tt-row.is-ringing .tt-sub { color: rgba(255, 255, 255, 0.9); }
+.tt-actions { flex: none; display: flex; align-items: center; }
+.tt-btn { margin-left: 6px; }
+.tt-pill {
+  height: 48px;
+  min-width: 56px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.13);
+  font-size: 17px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+}
+.tt-pill:active { background: rgba(255, 255, 255, 0.26); }
+.tt-pill:disabled { opacity: 0.3; }
+.tt-row.is-ringing .tt-pill { background: #fff; color: var(--timer-deep); }
+.tt-btn.is-confirm {
+  width: auto;
+  padding: 0 16px;
+  border-radius: 999px;
+  background: #b3261e;
+  color: #fff;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+/* ---- Timer finished: the whole screen pulses blue until Stop ---------------- */
+#alarm {
+  position: fixed;
+  top: 0; right: 0; bottom: 0; left: 0;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--timer-deep);
+  color: #fff;
+  text-align: center;
+}
+.alarm-pulse {
+  position: absolute;
+  top: 0; right: 0; bottom: 0; left: 0;
+  background: var(--timer);
+  animation: alarm-pulse 0.9s ease-in-out infinite alternate;
+}
+@keyframes alarm-pulse { from { opacity: 0.15; } to { opacity: 1; } }
+.alarm-body { position: relative; padding: 24px; }
+.alarm-icon { display: inline-flex; }
+.alarm-icon svg {
+  width: clamp(64px, 12vh, 112px);
+  height: clamp(64px, 12vh, 112px);
+  fill: #fff;
+  animation: alarm-shake 0.45s ease-in-out infinite;
+}
+@keyframes alarm-shake {
+  0%, 100% { transform: rotate(0); }
+  25% { transform: rotate(-12deg); }
+  75% { transform: rotate(12deg); }
+}
+#alarmTitle {
+  margin: 14px 0 8px;
+  font-size: clamp(44px, 8vw, 108px);
+  font-weight: 800;
+  font-variation-settings: "ROND" 30;
+  line-height: 1.05;
+}
+#alarmSub { margin: 0 0 clamp(28px, 7vh, 64px); font-size: clamp(18px, 2.5vw, 30px); color: rgba(255, 255, 255, 0.9); }
+.alarm-actions { display: flex; align-items: center; justify-content: center; }
+#alarmAdd {
+  height: clamp(64px, 10vh, 88px);
+  margin-right: 20px;
+  padding: 0 34px;
+  border: 2px solid rgba(255, 255, 255, 0.85);
+  border-radius: 999px;
+  background: transparent;
+  color: #fff;
+  font-size: clamp(20px, 2.6vw, 30px);
+  font-weight: 700;
+  cursor: pointer;
+}
+#alarmStop {
+  height: clamp(84px, 14vh, 116px);
+  min-width: clamp(220px, 30vw, 380px);
+  padding: 0 52px;
+  border: 0;
+  border-radius: 999px;
+  background: #fff;
+  color: var(--timer-deep);
+  font-size: clamp(30px, 4.2vw, 48px);
+  font-weight: 800;
+  cursor: pointer;
+}
+
+@media (orientation: portrait) {
+  .tp-body {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr);
+    grid-row-gap: 4vh;
+  }
+  .tp-side { justify-content: flex-start; }
+}
+
 /* ---- Diagnostics (long-press the clock) ------------------------------------ */
 #diag {
   position: fixed;
@@ -965,11 +1039,12 @@ body.timers-on #timerBtn.is-due .tb-label { color: #fff; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  #fp, #fp.open { transition: none; }
+  #fp, #fp.open, #tp, #tp.open { transition: none; }
+  .alarm-pulse { animation: none; opacity: 0.7; }
+  .alarm-icon svg { animation: none; }
+  .tf-arc, .tt-arc { transition: none; }
   .cd-fill { transition: none; }
   .ibtn.is-buffering::after { animation: none; border-color: var(--ink-3); }
   #miniTalk.is-recording { animation: none; }
-  #timerBtn.is-due, #tmAlert { animation: none; }
   .bake-title { animation-duration: 1.4s; }
-  #tm, #tm.open { transition: none; }
 }

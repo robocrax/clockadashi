@@ -331,7 +331,7 @@ public class KeeperService extends Service {
 
   /* ---- Kitchen timers: ring when one of the page's timers ends -------------- */
   static final int ALARM_VOLUME_PERCENT = 80;   // at least this loud while ringing
-  static final long ALARM_MAX_MS = 180000;      // stop ringing by itself after 3 minutes
+  static final long ALARM_MAX_MS = 10 * 60000;  // stop ringing by itself after 10 minutes (timers.js RING_MIN)
   private final Map<String, Long> timerEnds = new HashMap<>();
   private final Set<String> timedOut = new HashSet<>();  // rang for 3 minutes unanswered: don't restart
   private AudioTrack alarmTrack;

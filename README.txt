@@ -9,10 +9,10 @@ pushing to main deploys it, and the tablet picks the change up by itself.
   app.js         clock, calendar, alert colours, offline data, updates, activity log
   player.js      music: mini player, full player, offline song library
   intercom.js    hold-to-talk microphone next to the mini player
-  timers.js      kitchen timers (button left of the mini player)
-  fonts/         Manrope, served with the site so it works offline
+  timers.js      kitchen timers (the "Timer" button, bottom-left)
   sw.js          service worker (makes everything work without Wi-Fi)
   manifest.json  lets Android install it as a full-screen app
+  fonts/         Google Sans Flex, cut down for this app (OFL licence)
   icons/         app icons
   events.csv     the calendar
   tracks.json    the song list
@@ -25,7 +25,12 @@ pushing to main deploys it, and the tablet picks the change up by itself.
 WHAT THE SCREEN DOES
 --------------------
 Today's events across the top, the clock filling the middle, the date
-under it, countdown bars along the bottom, music player bottom-right.
+under it, the kitchen timers bottom-left, countdown bars along the
+bottom, and the music player bottom-right.
+
+Type is Google Sans Flex, kept with the app so it works offline: the
+clock uses a slightly narrow, slightly rounded setting so its digits can
+be as tall as possible for reading across the room.
 
 The whole background is the Ekadashi alert (any "ProgressBar" event):
 
@@ -70,6 +75,34 @@ within a day.
     "image": "music/fagva.jpg" }
 
 Square art and 16:9 video thumbnails both work.
+
+
+KITCHEN TIMERS
+--------------
+Tap the "Timer" button in the bottom-left corner (the first tap of each
+visit throws a "Let's BAKE!" shower of cookies and cupcakes). A new timer
+starts at the length of the last one started; 20 minutes the very first
+time. Tap - or + to change it a minute at a time, or hold to change it
+quickly. Start timer goes straight back to the clock, where the corner
+shows the next timer to finish in digits readable across the kitchen, and
+a card beside it the two after that (+N more). The clock shrinks a little
+and the Ekadashi bars move up a row to make room.
+
+Any number can run at once. In the timer screen each one has -1 and +1,
+pause, and cancel (tap twice, so a stray touch can't cancel it).
+
+When a timer finishes, the whole screen pulses blue and it rings, and any
+music pauses. Stop ends it (the music carries on); +1 min gives it
+another minute. Ringing stops after 10 minutes; the blue screen stays
+until Stop. Timers survive a reload or restart, and the app never
+applies an update while one is running.
+
+On the wall panel the Clock Panel app does the ringing: the TV's audio
+pauses, the volume goes to at least 80%, and both are put back after
+Stop; it rings on the second even if the clock isn't on screen.
+Elsewhere the page beeps itself, which needs one tap on the screen after
+the app opens (a browser rule); starting a timer counts, so it only
+matters after a restart.
 
 
 SEARCH AND SAVE SONGS FROM YOUTUBE MUSIC
@@ -159,23 +192,6 @@ song playing) the page asks the panel helper app to reopen it as the
 installed full-screen app (a web page can't go full screen without a tap).
 
 
-KITCHEN TIMERS
---------------
-The "Timer" button in the bottom-left corner (the first tap of each visit
-throws a "Let's BAKE!" shower of cookies and cupcakes). Tap it for the sheet:
-a new timer starts at the length used last time (20 minutes the first time),
-−1 / +1 changes it a minute at a time, Start runs it. Run as many as you
-like; each can be paused, given or lose a minute, or removed. While timers
-run, the corner shows the next one in digits readable across the kitchen, and
-a card beside it the two after that (+N more); the clock shrinks a little and
-the Ekadashi bars move up a row to make room.
-When one finishes the screen turns red with "Timer N is done": Stop, or
-+1 min for a little longer. On the panel the helper app rings (TV and music
-pause, volume at least 80%, everything put back afterwards; it stops by
-itself after 3 minutes) and it rings on time even if the page is in the
-background. Elsewhere the page chimes by itself. Timers survive reloads.
-
-
 INTERCOM
 --------
 The round microphone right of the mini player: hold to record, let go and
@@ -253,5 +269,9 @@ Top of app.js:
 Top of player.js:
   CLOSE_AFTER_SEC    90   full player closes itself after this long
   SONG_SERVER        http://localhost:8790   default song server address
+Top of timers.js:
+  DEFAULT_MIN        20   first timer length, before one has been started
+  MAX_MIN            720  longest timer (12 hours)
+  RING_MIN           10   minutes of beeping before it goes quiet
 
 If you change sw.js, bump VERSION inside it.
