@@ -255,7 +255,8 @@ TESTING AND DIAGNOSTICS
   on the screen itself (colours, events, countdown bars): pick a day and
   the screen shows it with the real time of day; only the date changes.
   The corner says "Previewing Wed 21 Oct" meanwhile; tap the calendar again, or
-  leave it untouched for 5 minutes, to return to today. Nothing is saved.
+  leave the screen untouched for 30 seconds, to return to today. Nothing is
+  saved.
 - Preview any moment by adding ?now= to the address, for example
   clock.nehal.boo/?now=2026-10-21T20:00 shows the red day before
   Pashankusha Ekadashi. The clock runs on from there. Nothing is saved.

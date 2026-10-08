@@ -7,7 +7,7 @@
   'use strict';
 
   /* ---- Settings ---------------------------------------------------------- */
-  var VERSION = '3.7.0';
+  var VERSION = '3.7.1';
   var COUNTDOWN_DAYS = 8;      // a ProgressBar event gets its bar this many days ahead
   var APPROACH_DAYS = 4;       // purple tint from this many days out, until the red day before
   var PAD_HOURS = true;        // 08:05 rather than 8:05, so the clock never changes width
@@ -622,14 +622,17 @@
   /* ---- Date preview: the calendar button, top-left --------------------------
      Shows the screen as it will look on another day (colours, events, countdown
      bars, date). Only the date changes, never the time. Nothing is saved: a
-     reload shows today, and so does PREVIEW_IDLE_MIN untouched. */
-  var PREVIEW_IDLE_MIN = 5;
+     reload shows today, and so does PREVIEW_IDLE_SEC untouched. */
+  var PREVIEW_IDLE_SEC = 30;
   function isoDay(d) { return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate()); }
   function setPreview(day) {
     var today = new Date();
     if (day && day.y === today.getFullYear() && day.m === today.getMonth() && day.d === today.getDate()) day = null;
     previewDay = day;
-    if (day) offsetMs = 0;  // the button wins over ?now=
+    if (day) {
+      offsetMs = 0;            // the button wins over ?now=
+      lastTouch = Date.now();  // taps in the date picker don't reach the page: count from now
+    }
     var d = now();
     // kept short: today's events are centred clear of the status, so a long one squeezes them
     CK.setStatus('preview', day ? 'Previewing ' + WEEKDAYS[d.getDay()].slice(0, 3) + ' ' + d.getDate() + ' ' +
@@ -657,7 +660,7 @@
     if (m) setPreview({ y: +m[1], m: +m[2] - 1, d: +m[3] });
   }
   function endPreviewWhenIdle() {
-    if (previewDay && Date.now() - lastTouch > PREVIEW_IDLE_MIN * 60000) setPreview(null);
+    if (previewDay && Date.now() - lastTouch > PREVIEW_IDLE_SEC * 1000) setPreview(null);
   }
 
   /* ---- Keep the screen on -------------------------------------------------- */
@@ -755,7 +758,7 @@
     el.fsBtn.addEventListener('click', function () { if (fsElement()) exitFullscreen(); else enterFullscreen(); });
     el.calBtn.addEventListener('click', pickPreviewDate);
     el.calInput.addEventListener('change', previewPicked);
-    setInterval(endPreviewWhenIdle, 15000);
+    setInterval(endPreviewWhenIdle, 5000);
     var fsSupported = !!(document.documentElement.requestFullscreen || document.documentElement.webkitRequestFullscreen);
     el.fsBtn.hidden = !fsSupported || displayMode() === 'fullscreen';
     document.addEventListener('fullscreenchange', renderFsButton);
