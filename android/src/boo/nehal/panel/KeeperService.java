@@ -116,6 +116,7 @@ public class KeeperService extends Service {
     main.post(loop);
     startServer();
     new LocalSite(this).start();
+    new SongServer(this).start();
     startAmp();
   }
 

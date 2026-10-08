@@ -19,7 +19,7 @@
   var PIECE = 1024 * 1024;
   var CLOSE_AFTER_SEC = 90;                  // the full player slides away after this long untouched
   var RECHECK_FILES_HOURS = 24;              // look for songs replaced on the site this often
-  var SONG_SERVER = 'http://localhost:8790'; // server/ytdl_server.py; change with ?songserver=
+  var SONG_SERVER = 'http://localhost:8790'; // the panel app, or server/ytdl_server.py; change with ?songserver=
   var LS_PLAYER = 'clockadashi_player';
   var LS_DURATIONS = 'clockadashi_durations';
   var LS_CHECKED = 'clockadashi_media_checked_at';

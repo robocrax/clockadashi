@@ -75,14 +75,25 @@ Square art and 16:9 video thumbnails both work.
 SEARCH AND SAVE SONGS FROM YOUTUBE MUSIC
 ----------------------------------------
 The full player's Search tab finds songs (or videos) on YouTube Music.
-Tapping one sends its link to the song server, which downloads the audio
-with yt-dlp; the clock then saves it like any other song and plays it.
+Tapping one sends its link to the song server, which downloads the audio;
+the clock then saves it like any other song and plays it.
 It stays through refreshes, restarts and Wi-Fi drops. Songs added this
 way have a bin icon in "Up next": tap it twice to remove the song.
 
-The song server (server/ytdl_server.py) must be reachable from the
-browser as http://localhost:8790 (an https page may only call plain http
-on localhost).
+On the wall panel the song server is part of the Clock Panel app
+(android/, SongServer.java) on http://localhost:8790: nothing to run on a
+computer. Nothing is signed in: search is YouTube Music's own web API (as
+the ytmusicapi library uses it) and the audio comes from YouTube's player
+API as its visionOS app asks for it, which gets direct links with no
+JavaScript runtime or proof-of-origin token. Songs are kept in the app's
+storage too. If downloads start failing, YouTube has changed something:
+compare with yt-dlp's current client table (INNERTUBE_CLIENTS in
+yt_dlp/extractor/youtube/_base.py) and the constants at the top of
+SongServer.java.
+
+Anywhere else (a computer, another tablet) use server/ytdl_server.py,
+which must be reachable from the browser as http://localhost:8790 (an
+https page may only call plain http on localhost).
 
   First time, on the computer (Python 3.10+, plus Deno or Node.js):
     cd server
@@ -99,13 +110,6 @@ on localhost).
         ?songserver=https://YOUR-SERVER&songtoken=SECRET
     and start the server with
         --host 0.0.0.0 --token SECRET --origin https://clock.nehal.boo
-
-  To keep it running on this computer and the tunnel up through Wi-Fi drops
-  and panel reboots, run server\panel-link.ps1 (starts the server, re-does
-  "adb connect" + "adb reverse" every 30 s; log in server\panel-link.log).
-  To start it at every logon, run once in PowerShell:
-    $a = New-ScheduledTaskAction -Execute powershell.exe -Argument '-NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File "C:\Users\Tom\Documents\GitHub\clockadashi\server\panel-link.ps1"'
-    Register-ScheduledTask -TaskName 'Clockadashi panel link' -Action $a -Trigger (New-ScheduledTaskTrigger -AtLogOn -User $env:USERNAME)
 
 Chrome may ask once to let the clock reach "apps and services on this
 device"; allow it. Downloads also stay in server/downloads (safe to
@@ -187,6 +191,7 @@ THE PANEL (android/)
 --------------------
 The "Clock Panel" helper app is the panel's home screen and runs a small
 background service:
+  - Runs the song server for the Search tab (see above).
   - Serves the clock itself on http://localhost:8642: the copy bundled in the
     app to start with, replaced by any newer one published to clock.nehal.boo
     (so pushing to main still updates the panel). Songs come from
