@@ -157,11 +157,14 @@ installed full-screen app (a web page can't go full screen without a tap).
 
 KITCHEN TIMERS
 --------------
-The round timer button left of the mini player. Tap it for the timer sheet:
+The "Timer" button in the bottom-left corner (the first tap of each visit
+throws a "Let's BAKE!" shower of cookies and cupcakes). Tap it for the sheet:
 a new timer starts at the length used last time (20 minutes the first time),
 −1 / +1 changes it a minute at a time, Start runs it. Run as many as you
 like; each can be paused, given or lose a minute, or removed. While timers
-run, the button shows the next one counting down (+N when there are more).
+run, the corner shows the next one in digits readable across the kitchen, and
+a card beside it the two after that (+N more); the clock shrinks a little and
+the Ekadashi bars move up a row to make room.
 When one finishes the screen turns red with "Timer N is done": Stop, or
 +1 min for a little longer. On the panel the helper app rings (TV and music
 pause, volume at least 80%, everything put back afterwards; it stops by
@@ -184,12 +187,20 @@ THE PANEL (android/)
 --------------------
 The "Clock Panel" helper app is the panel's home screen and runs a small
 background service:
+  - Serves the clock itself on http://localhost:8642: the copy bundled in the
+    app to start with, replaced by any newer one published to clock.nehal.boo
+    (so pushing to main still updates the panel). Songs come from
+    clock.nehal.boo the first time and are kept on the panel. It opens with no
+    internet and doesn't depend on GitHub Pages; "Offline" still means the
+    internet can't be reached.
   - Home / boot: a 4-second countdown, then the clock opens as the installed
-    full-screen app (Chrome menu > Install, accepted by this app). "Stay
-    here" on that screen reaches Settings, Wi-Fi, Bluetooth, the vendor app.
+    full-screen app (Chrome menu > Install on http://localhost:8642, accepted
+    by this app). "Stay here" reaches Settings, Wi-Fi and Bluetooth.
   - Reconnects the TV ("Living Room TV", any paired device with "TV" in its
-    name) as the Bluetooth audio source whenever nothing is connected, and
-    turns Bluetooth back on if it is left off.
+    name) as the Bluetooth audio source whenever nothing is connected: at
+    once when the TV appears, every 8 s for 3 minutes after it drops, every
+    30 s otherwise. Turns Bluetooth back on if it is left off.
+  - Brings the clock back if another app is left in front for 10 minutes.
   - Sets the amplifier's hardware volume the instant Android's volume changes
     (the vendor music app only copied it across every ~1.5 s, so TV volume
     changes reached the speakers late). Uses the panel's own driver library,
@@ -206,6 +217,7 @@ platform 29; signing key kept in %USERPROFILE%\.clockadashi). Install:
   adb install -r android\out\clockpanel.apk
   adb shell cmd package set-home-activity boo.nehal.panel/.HomeActivity
   adb shell appops set boo.nehal.panel SYSTEM_ALERT_WINDOW allow
+  adb shell appops set boo.nehal.panel GET_USAGE_STATS allow
   adb shell cmd notification allow_listener boo.nehal.panel/.PromptBlocker
   adb shell settings put global hidden_api_policy 1
 Undo: adb shell cmd package set-home-activity com.youzhuan.musiclauncher/.MainActivity

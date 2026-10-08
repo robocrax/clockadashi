@@ -10,11 +10,11 @@
 <link rel="manifest" href="manifest.json">
 <link rel="icon" type="image/png" href="icons/icon-192.png">
 <link rel="preload" href="fonts/manrope-latin.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="style.css?v=3.3.0">
-<script defer src="app.js?v=3.3.0"></script>
-<script defer src="player.js?v=3.3.0"></script>
-<script defer src="intercom.js?v=3.3.0"></script>
-<script defer src="timers.js?v=3.3.0"></script>
+<link rel="stylesheet" href="style.css?v=3.4.0">
+<script defer src="app.js?v=3.4.0"></script>
+<script defer src="player.js?v=3.4.0"></script>
+<script defer src="intercom.js?v=3.4.0"></script>
+<script defer src="timers.js?v=3.4.0"></script>
 </head>
 <body class="s-calm">
 <noscript><div class="noscript">Javascript is not supported on this browser</div></noscript>
@@ -31,12 +31,17 @@
   </div>
 
   <div id="bottom">
+    <!-- Kitchen timers, bottom-left: "Timer" when idle; while running, the next one in big
+         digits and a second card with the two after it. -->
+    <div id="timerDock">
+      <button id="timerBtn" type="button" aria-label="Kitchen timers">
+        <span class="tb-head"><span class="tb-icon" data-icon="timer"></span><span id="timerBtnLabel" class="tb-label">Timer</span></span>
+        <span id="timerBtnText" class="tb-time" hidden></span>
+      </button>
+      <button id="timerNext" type="button" aria-label="More timers" hidden></button>
+    </div>
     <div id="bars"></div>
     <div id="dock">
-    <!-- Kitchen timers: shows the next timer counting down once one runs. -->
-    <button id="timerBtn" type="button" aria-label="Kitchen timers">
-      <span class="tb-icon" data-icon="timer"></span><span id="timerBtnText" class="tb-text" hidden></span><span id="timerBtnMore" class="tb-more" hidden></span>
-    </button>
     <div id="mini">
       <button id="miniOpen" type="button" aria-label="Open music player">
         <span class="mini-art"><img id="miniArt" alt="" hidden><span id="miniPh" class="art-ph" data-icon="note"></span></span>

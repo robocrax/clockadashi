@@ -31,7 +31,8 @@ import java.util.List;
  */
 public class HomeActivity extends Activity {
   static final String PREFS = "panel";
-  static final String CLOCK_URL = "https://clock.nehal.boo/";
+  // served by this app (LocalSite), not the internet; kept in step with https://clock.nehal.boo
+  static final String CLOCK_URL = "http://localhost:" + LocalSite.PORT + "/";
   static final String CHROME = "com.android.chrome";
   static final int COUNTDOWN_SEC = 4;
 
@@ -185,15 +186,16 @@ public class HomeActivity extends Activity {
     String problem = null;
     try {
       if (la.hasShortcutHostPermission()) {
+        // the shortcut Chrome pinned last ("Install" on the clock; PinActivity saves it). Launchers
+        // can't see a shortcut's address, so if that's lost, take the newest pinned Chrome shortcut.
         String pkg = sp.getString("sc_pkg", null), id = sp.getString("sc_id", null);
-        if (id == null) {  // pinned before this app was installed, or prefs lost: look it up
+        if (id == null) {
           LauncherApps.ShortcutQuery q = new LauncherApps.ShortcutQuery()
               .setPackage(CHROME).setQueryFlags(LauncherApps.ShortcutQuery.FLAG_MATCH_PINNED);
           List<ShortcutInfo> list = la.getShortcuts(q, Process.myUserHandle());
+          long newest = -1;
           if (list != null) for (ShortcutInfo si : list) {
-            Intent in = si.getIntent();
-            String data = in == null ? "" : String.valueOf(in.getDataString()) + in.getExtras();
-            if (data.contains("clock.nehal.boo")) { pkg = si.getPackage(); id = si.getId(); break; }
+            if (si.getLastChangedTimestamp() > newest) { newest = si.getLastChangedTimestamp(); pkg = si.getPackage(); id = si.getId(); }
           }
         }
         if (id != null) {

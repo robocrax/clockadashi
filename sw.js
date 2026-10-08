@@ -11,7 +11,7 @@
    ========================================================================= */
 'use strict';
 
-var VERSION = '3.3.0';
+var VERSION = '3.4.0';
 var SHELL_CACHE = 'clockadashi-shell-' + VERSION;
 var MEDIA_CACHE = 'clockadashi-media-v1';  // filled by player.js
 var SHELL_FILES = ['index.html', 'style.css', 'app.js', 'player.js', 'intercom.js', 'timers.js', 'manifest.json',

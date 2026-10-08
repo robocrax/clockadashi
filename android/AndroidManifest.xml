@@ -13,6 +13,8 @@
   <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
   <!-- lets the keeper bring the full-screen clock back from the background (granted with appops) -->
   <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+  <!-- sees which app is in front, to come back to the clock if one is left open (granted with appops) -->
+  <uses-permission android:name="android.permission.PACKAGE_USAGE_STATS" />
 
   <application
       android:label="Clock Panel"

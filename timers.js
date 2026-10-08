@@ -27,7 +27,7 @@
   var log = CK.log;
   function $(id) { return document.getElementById(id); }
   var ui = {};
-  ['timerBtn', 'timerBtnText', 'timerBtnMore', 'tm', 'tmClose', 'tmMinus', 'tmNewTime', 'tmPlus', 'tmStart',
+  ['timerBtn', 'timerBtnLabel', 'timerBtnText', 'timerNext', 'tm', 'tmClose', 'tmMinus', 'tmNewTime', 'tmPlus', 'tmStart',
     'tmList', 'tmAlert', 'tmAlertTitle', 'tmAlertSub', 'tmAlertStop', 'tmAlertMore'].forEach(function (id) { ui[id] = $(id); });
   if (!ui.timerBtn) return;
 
@@ -177,17 +177,29 @@
     var running = timers.filter(function (t) { return t.end && !isDue(t, now); })
       .sort(function (a, b) { return a.end - b.end; });
 
-    // the button: the next timer, or "Done"
-    var next = due[0] || running[0] || timers[0];
-    ui.timerBtn.classList.toggle('is-running', !!next);
+    // bottom-left: "Timer" when idle; otherwise the next timer in big digits (or "Done"),
+    // and a second card with the two after it
+    var paused = timers.filter(function (t) { return !t.end; })
+      .sort(function (a, b) { return a.left - b.left; });
+    var upcoming = running.concat(paused);
+    var next = due.length ? null : upcoming[0];
+    var on = timers.length > 0;
+    document.body.classList.toggle('timers-on', on);
     ui.timerBtn.classList.toggle('is-due', due.length > 0);
-    ui.timerBtnText.hidden = !next;
     ui.timerBtn.classList.toggle('is-paused', !!next && !next.end);
-    if (next) ui.timerBtnText.textContent = due.length ? 'Done' : fmt(remaining(next, now));
-    var more = timers.length - 1;
-    ui.timerBtnMore.hidden = more < 1;
-    ui.timerBtnMore.textContent = '+' + more;
-    ui.timerBtn.setAttribute('aria-label', next ? 'Kitchen timers: ' + label(next) + ' ' + ui.timerBtnText.textContent : 'Kitchen timers');
+    ui.timerBtnText.hidden = !on;
+    if (!on) {
+      setText(ui.timerBtnLabel, 'Timer');
+    } else if (due.length) {
+      setText(ui.timerBtnLabel, due.length === 1 ? label(due[0]) : due.length + ' timers');
+      setText(ui.timerBtnText, 'Done');
+    } else {
+      setText(ui.timerBtnLabel, label(next) + (next.end ? '' : ' · paused'));
+      setText(ui.timerBtnText, fmt(remaining(next, now)));
+    }
+    ui.timerBtn.setAttribute('aria-label', on ? 'Kitchen timers: ' + ui.timerBtnLabel.textContent + ' ' +
+      ui.timerBtnText.textContent : 'Kitchen timers');
+    renderNext(due.length ? upcoming : upcoming.slice(1), now);
 
     // the alert
     var ringing = due.length > 0;
@@ -223,6 +235,83 @@
       if (!keep[id]) { rows[id].el.remove(); delete rows[id]; }
     });
     ui.tmList.classList.toggle('is-empty', !timers.length);
+  }
+
+  function setText(node, text) { if (node.textContent !== text) node.textContent = text; }
+
+  // The card beside the big timer: the next two after it, and how many more.
+  var nextRows = [];
+  function renderNext(rest, now) {
+    ui.timerNext.hidden = !rest.length;
+    if (!rest.length) return;
+    var shown = rest.slice(0, 2);
+    while (nextRows.length < 3) {
+      var row = document.createElement('span');
+      row.className = 'tn-row';
+      row.innerHTML = '<span class="tn-name"></span><span class="tn-time"></span>';
+      ui.timerNext.appendChild(row);
+      nextRows.push({ el: row, name: row.firstChild, time: row.lastChild });
+    }
+    nextRows.forEach(function (r, i) {
+      var t = shown[i];
+      r.el.hidden = !t && i < 2;
+      if (i === 2) {  // "+N more"
+        r.el.hidden = rest.length <= 2;
+        setText(r.name, '');
+        setText(r.time, '+' + (rest.length - 2) + ' more');
+        r.el.classList.add('tn-more');
+        return;
+      }
+      if (!t) return;
+      setText(r.name, label(t) + (t.end ? '' : ' · paused'));
+      setText(r.time, fmt(remaining(t, now)));
+    });
+  }
+
+  /* ---- "Let's BAKE!": cookies and cupcakes, first tap of each session ------ */
+  var SS_BAKED = 'clockadashi_baked';
+  var FX_SVG = '<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>' +
+    // cookie: golden disc, darker rim, chocolate chips, a bite out of one side
+    '<symbol id="fx-cookie" viewBox="0 0 64 64"><mask id="fx-bite"><rect width="64" height="64" fill="#fff"/>' +
+    '<circle cx="58" cy="14" r="9" fill="#000"/><circle cx="50" cy="6" r="7" fill="#000"/></mask>' +
+    '<g mask="url(#fx-bite)"><circle cx="32" cy="32" r="28" fill="#b9773c"/><circle cx="32" cy="32" r="24" fill="#d99a55"/>' +
+    '<ellipse cx="24" cy="22" rx="8" ry="4" fill="#e9b877" opacity=".6"/>' +
+    '<g fill="#4a2a17"><circle cx="22" cy="30" r="4"/><circle cx="38" cy="24" r="3.5"/><circle cx="40" cy="40" r="4.5"/>' +
+    '<circle cx="26" cy="44" r="3.5"/><circle cx="31" cy="35" r="2.5"/><circle cx="47" cy="30" r="2.5"/></g></g></symbol>' +
+    // cupcake: striped wrapper, swirled pink frosting, sprinkles, cherry
+    '<symbol id="fx-cupcake" viewBox="0 0 64 64">' +
+    '<path d="M14 36h36l-5 24H19z" fill="#4fa3e0"/><path d="M22 36l2 24M32 36v24M42 36l-2 24" stroke="#2f7fbf" stroke-width="3"/>' +
+    '<path d="M10 37c0-7 5-11 11-11 1-7 6-11 11-11s10 4 11 11c6 0 11 4 11 11z" fill="#f48fb1"/>' +
+    '<path d="M16 30c4-3 10-3 14 0M30 22c3-2 7-2 10 1" stroke="#f8bbd0" stroke-width="3" fill="none" stroke-linecap="round"/>' +
+    '<g stroke-width="2.5" stroke-linecap="round"><path d="M20 33l2-2" stroke="#ffe082"/><path d="M38 30l2 2" stroke="#80deea"/>' +
+    '<path d="M28 27l3-1" stroke="#a5d6a7"/><path d="M44 34l2-2" stroke="#fff"/></g>' +
+    '<path d="M33 9c1-4 4-6 7-6" stroke="#5d4037" stroke-width="2" fill="none"/><circle cx="32" cy="12" r="6" fill="#e53935"/>' +
+    '<circle cx="30" cy="10" r="1.8" fill="#ff8a80"/></symbol></defs></svg>';
+
+  function letsBake() {
+    var reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+    var fx = document.createElement('div');
+    fx.className = 'bake-fx';
+    fx.setAttribute('aria-hidden', 'true');
+    var html = FX_SVG + '<div class="bake-title">Let’s BAKE!</div>';
+    var count = reduce ? 0 : 28;
+    for (var i = 0; i < count; i++) {
+      var size = 44 + Math.random() * 56, dur = 2.2 + Math.random() * 1.6, delay = Math.random() * 1.1;
+      var spin = (Math.random() < 0.5 ? -1 : 1) * (120 + Math.random() * 360);
+      html += '<svg class="bake-item" style="left:' + (Math.random() * 96).toFixed(1) + '%;width:' + size.toFixed(0) +
+        'px;height:' + size.toFixed(0) + 'px;animation-duration:' + dur.toFixed(2) + 's;animation-delay:' + delay.toFixed(2) +
+        's;--spin:' + spin.toFixed(0) + 'deg"><use href="#fx-' + (Math.random() < 0.5 ? 'cookie' : 'cupcake') + '"/></svg>';
+    }
+    fx.innerHTML = html;
+    document.body.appendChild(fx);
+    setTimeout(function () { fx.remove(); }, reduce ? 1600 : 4200);
+  }
+  function firstTapThisSession() {
+    try {
+      if (sessionStorage.getItem(SS_BAKED)) return false;
+      sessionStorage.setItem(SS_BAKED, '1');
+    } catch (e) {}
+    return true;
   }
 
   function iconButton(icon, labelText, onClick) {
@@ -303,8 +392,10 @@
   /* ---- Controls --------------------------------------------------------------- */
   ui.timerBtn.addEventListener('click', function () {
     if (!ui.tmAlert.hidden) return;
+    if (firstTapThisSession()) letsBake();
     open();
   });
+  ui.timerNext.addEventListener('click', function () { if (ui.tmAlert.hidden) open(); });
   ui.tmClose.addEventListener('click', function () { close(false); });
   ui.tmMinus.addEventListener('click', function () { newMin = clampMin(newMin - 1); render(); });
   ui.tmPlus.addEventListener('click', function () { newMin = clampMin(newMin + 1); render(); });

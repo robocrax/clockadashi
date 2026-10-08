@@ -158,10 +158,16 @@ body.s-today .ev-minor { color: var(--ink); }
 
 #bottom {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-areas: "timers bars dock";
   grid-column-gap: var(--edge);
   align-items: end;
 }
+#bars { grid-area: bars; }
+#dock { grid-area: dock; }
+/* timers running: the countdown bars get their own row above */
+body.timers-on #bottom { grid-template-areas: "bars bars bars" "timers . dock"; }
+body.timers-on #bars:not(:empty) { margin-bottom: max(12px, 2.2vh); }
 
 /* ---- Countdown bars: the big one first, any later ones smaller ---------- */
 #bars { min-width: 0; }
@@ -270,42 +276,100 @@ body.s-tomorrow .cd:first-child .cd-label { font-weight: 700; }
 }
 #miniTalk.is-playing { background: var(--surface-press); }
 
-/* ---- Kitchen timer button: round when idle, a countdown pill when running -- */
-#timerBtn {
+/* ---- Kitchen timers, bottom-left ------------------------------------------
+   Idle: a "Timer" pill. Running: the next timer in digits readable across the
+   room, plus a card with the two after it. While timers run the countdown bars
+   move up a row (see #bottom), and the clock shrinks to make room. */
+#timerDock { grid-area: timers; display: flex; align-items: flex-end; gap: max(10px, 1vw); }
+#timerBtn, #timerNext {
   flex: none;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-width: clamp(64px, 9vh, 84px);
-  height: clamp(64px, 9vh, 84px);
-  margin: 0 max(8px, 1vw) 0 0;
-  padding: 0 clamp(14px, 2.2vh, 20px);
   border: 0;
-  border-radius: 999px;
   background: var(--surface);
   color: var(--ink);
   cursor: pointer;
   font-variant-numeric: tabular-nums;
+  text-align: left;
 }
-#timerBtn:active { background: var(--surface-press); }
+#timerBtn:active, #timerNext:active { background: var(--surface-press); }
+#timerBtn {
+  display: flex;
+  align-items: center;
+  height: clamp(64px, 9vh, 84px);
+  padding: 0 clamp(18px, 2.6vh, 26px) 0 clamp(14px, 2.2vh, 20px);
+  border-radius: 999px;
+}
+.tb-head { display: flex; align-items: center; }
 .tb-icon { display: flex; }
 .tb-icon svg { width: clamp(30px, 4.4vh, 38px); height: clamp(30px, 4.4vh, 38px); fill: currentColor; }
-.tb-text {
-  margin-left: 10px;
-  font-size: clamp(26px, 4.2vh, 40px);
+.tb-label { margin-left: 10px; font-size: clamp(20px, 3.3vh, 28px); font-weight: 700; white-space: nowrap; }
+body.timers-on #timerBtn {
+  flex-direction: column;
+  align-items: flex-start;
+  height: auto;
+  padding: clamp(10px, 1.6vh, 16px) clamp(18px, 2.2vw, 30px) clamp(12px, 1.8vh, 18px);
+  border-radius: 26px;
+}
+body.timers-on .tb-icon svg { width: clamp(20px, 3vh, 26px); height: clamp(20px, 3vh, 26px); }
+body.timers-on .tb-label { margin-left: 8px; font-size: clamp(16px, 2.7vh, 22px); color: var(--ink-2); }
+.tb-time {
+  font-size: clamp(64px, 16vh, 150px);
   font-weight: 800;
-  letter-spacing: -0.01em;
+  line-height: 0.95;
+  letter-spacing: -0.03em;
+  white-space: nowrap;
 }
-.tb-more {
-  margin-left: 8px;
-  padding: 2px 8px;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.2);
-  font-size: clamp(13px, 1.9vh, 16px);
-  font-weight: 700;
-}
-#timerBtn.is-paused .tb-text { opacity: 0.55; }
+#timerBtn.is-paused .tb-time { opacity: 0.5; }
 #timerBtn.is-due { background: #d93025; animation: talk-pulse 1.2s ease-in-out infinite; }
+body.timers-on #timerBtn.is-due .tb-label { color: #fff; }
+
+#timerNext {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(6px, 1.2vh, 12px);
+  padding: clamp(10px, 1.6vh, 16px) clamp(16px, 1.8vw, 24px);
+  border-radius: 22px;
+}
+.tn-row { display: flex; flex-direction: column; }
+.tn-name { font-size: clamp(14px, 2.2vh, 18px); color: var(--ink-2); font-weight: 600; }
+.tn-time { font-size: clamp(34px, 7.5vh, 68px); font-weight: 800; line-height: 1; letter-spacing: -0.02em; }
+.tn-more .tn-name { display: none; }
+.tn-more .tn-time { font-size: clamp(15px, 2.4vh, 20px); font-weight: 700; color: var(--ink-2); }
+
+/* "Let's BAKE!": the first tap on the timer each session */
+.bake-fx { position: fixed; top: 0; right: 0; bottom: 0; left: 0; z-index: 40; pointer-events: none; overflow: hidden; }
+.bake-title {
+  position: absolute;
+  top: 42%;
+  left: 0; right: 0;
+  text-align: center;
+  font-size: clamp(56px, 15vh, 150px);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: #fff;
+  text-shadow: 0 4px 0 #f48fb1, 0 8px 30px rgba(0, 0, 0, 0.55);
+  animation: bake-pop 2.4s cubic-bezier(0.2, 0.9, 0.3, 1.2) both;
+}
+@keyframes bake-pop {
+  0% { transform: scale(0.3) rotate(-8deg); opacity: 0; }
+  18% { transform: scale(1.12) rotate(3deg); opacity: 1; }
+  30% { transform: scale(1) rotate(0); }
+  78% { transform: scale(1); opacity: 1; }
+  100% { transform: scale(1.25); opacity: 0; }
+}
+.bake-item {
+  position: absolute;
+  top: -120px;
+  filter: drop-shadow(0 6px 8px rgba(0, 0, 0, 0.35));
+  animation-name: bake-fall;
+  animation-timing-function: cubic-bezier(0.35, 0, 0.75, 1);
+  animation-fill-mode: both;
+}
+@keyframes bake-fall {
+  0% { transform: translateY(0) rotate(0); opacity: 0; }
+  8% { opacity: 1; }
+  80% { opacity: 1; }
+  100% { transform: translateY(calc(100vh + 160px)) rotate(var(--spin)); opacity: 0; }
+}
 
 /* ---- Timer sheet ---------------------------------------------------------- */
 #tm {
@@ -494,7 +558,7 @@ body.s-tomorrow .cd:first-child .cd-label { font-weight: 700; }
 }
 
 @media (orientation: portrait) {
-  #bottom { grid-template-columns: minmax(0, 1fr); grid-row-gap: 2vh; }
+  #bottom, body.timers-on #bottom { grid-template-columns: minmax(0, 1fr); grid-template-areas: "bars" "timers" "dock"; grid-row-gap: 2vh; }
   #mini { width: auto; flex: 1; min-width: 0; }
   .cd-label { font-size: clamp(16px, 4vw, 40px); }
 }
@@ -906,5 +970,6 @@ body.s-tomorrow .cd:first-child .cd-label { font-weight: 700; }
   .ibtn.is-buffering::after { animation: none; border-color: var(--ink-3); }
   #miniTalk.is-recording { animation: none; }
   #timerBtn.is-due, #tmAlert { animation: none; }
+  .bake-title { animation-duration: 1.4s; }
   #tm, #tm.open { transition: none; }
 }

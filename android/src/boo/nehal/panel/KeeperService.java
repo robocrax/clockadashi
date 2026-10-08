@@ -7,6 +7,8 @@ import android.app.Service;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothProfile;
+import android.app.usage.UsageEvents;
+import android.app.usage.UsageStatsManager;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
@@ -61,8 +63,11 @@ public class KeeperService extends Service {
   static final String TAG = "ClockPanel";
   static final int PORT = 8791;
   static final int A2DP_SINK = 11;           // BluetoothProfile.A2DP_SINK (hidden constant)
-  static final long LOOP_MS = 15000;
-  static final long RETRY_CONNECT_MS = 30000;
+  static final long LOOP_MS = 5000;
+  static final long RETRY_CONNECT_MS = 30000;        // TV off for a while: try every 30 s
+  static final long RETRY_CONNECT_FAST_MS = 8000;    // just after it dropped or showed up: every 8 s
+  static final long FAST_RETRY_FOR_MS = 180000;
+  static final long RETURN_TO_CLOCK_MS = 10 * 60000; // another app left open this long: back to the clock
   static final long INTERCOM_SAFETY_MS = 90000;
   static final String[] ORIGINS = { "https://clock.nehal.boo", "http://localhost:8642", "http://127.0.0.1:8642" };
 
@@ -76,7 +81,9 @@ public class KeeperService extends Service {
   private MediaPlayer player;
   private int savedVolume = -1;
   private long lastConnectTry;
+  private long tvLastSeen;  // when the TV last dropped, or reached us without audio
   private int btOffCount;
+  private int loops;
   private ServerSocket server;
 
   @Override public IBinder onBind(Intent i) { return null; }
@@ -103,9 +110,60 @@ public class KeeperService extends Service {
 
     bt = BluetoothAdapter.getDefaultAdapter();
     bindSink();
+    IntentFilter tvFilter = new IntentFilter(BluetoothDevice.ACTION_ACL_CONNECTED);
+    tvFilter.addAction(A2DP_SINK_STATE_CHANGED);
+    registerReceiver(tvEvents, tvFilter, null, main);
     main.post(loop);
     startServer();
+    new LocalSite(this).start();
     startAmp();
+  }
+
+  /* ---- The TV: react the moment it appears or drops, instead of waiting for the next try ---- */
+  static final String A2DP_SINK_STATE_CHANGED = "android.bluetooth.a2dp-sink.profile.action.CONNECTION_STATE_CHANGED";
+
+  private final BroadcastReceiver tvEvents = new BroadcastReceiver() {
+    @Override public void onReceive(Context c, Intent i) {
+      BluetoothDevice d = i.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE);
+      BluetoothDevice tv = bt == null ? null : findTv();
+      if (d == null || tv == null || !d.getAddress().equals(tv.getAddress())) return;
+      String a = i.getAction();
+      int state = i.getIntExtra(BluetoothProfile.EXTRA_STATE, -1);
+      boolean wasConnected = i.getIntExtra(BluetoothProfile.EXTRA_PREVIOUS_STATE, -1) == BluetoothProfile.STATE_CONNECTED;
+      if (BluetoothDevice.ACTION_ACL_CONNECTED.equals(a)) {
+        Log.i(TAG, "TV in range: connecting audio now");
+        tvLastSeen = System.currentTimeMillis();
+        lastConnectTry = 0;
+        main.postDelayed(KeeperService.this::checkBluetooth, 1500);  // let the TV finish its own setup first
+      } else if (A2DP_SINK_STATE_CHANGED.equals(a) && state == BluetoothProfile.STATE_DISCONNECTED && wasConnected) {
+        // a real drop (a failed attempt while the TV is off goes CONNECTING -> DISCONNECTED: ignored)
+        Log.i(TAG, "TV audio dropped: retrying every " + RETRY_CONNECT_FAST_MS / 1000 + " s for a while");
+        tvLastSeen = System.currentTimeMillis();
+        lastConnectTry = 0;
+      }
+    }
+  };
+
+  private long retryInterval() {
+    return System.currentTimeMillis() - tvLastSeen < FAST_RETRY_FOR_MS ? RETRY_CONNECT_FAST_MS : RETRY_CONNECT_MS;
+  }
+
+  /* ---- Always back to the clock: another app left open for 10 minutes goes away ---- */
+  private void returnToClockIfLeftOpen() {
+    UsageStatsManager usm = getSystemService(UsageStatsManager.class);
+    long now = System.currentTimeMillis();
+    UsageEvents ev = usm.queryEvents(now - RETURN_TO_CLOCK_MS * 3, now);  // empty unless usage access is granted
+    UsageEvents.Event e = new UsageEvents.Event();
+    String pkg = null;
+    long since = 0;
+    while (ev.hasNextEvent()) {
+      ev.getNextEvent(e);
+      if (e.getEventType() == UsageEvents.Event.MOVE_TO_FOREGROUND) { pkg = e.getPackageName(); since = e.getTimeStamp(); }
+    }
+    if (pkg == null || pkg.equals(getPackageName()) || pkg.equals(HomeActivity.CHROME)) return;
+    if (now - since < RETURN_TO_CLOCK_MS) return;
+    Log.i(TAG, pkg + " open for " + (now - since) / 60000 + " min: back to the clock");
+    HomeActivity.openClock(this);
   }
 
   /* ---- Amplifier volume follows Android's media volume immediately ------- */
@@ -132,6 +190,7 @@ public class KeeperService extends Service {
   @Override public void onDestroy() {
     main.removeCallbacksAndMessages(null);
     try { unregisterReceiver(volumeChanged); } catch (IllegalArgumentException notRegistered) {}
+    try { unregisterReceiver(tvEvents); } catch (IllegalArgumentException notRegistered) {}
     try { if (server != null) server.close(); } catch (Exception ignored) {}
     endIntercom();
     if (alarmTrack != null) stopRinging();
@@ -152,6 +211,9 @@ public class KeeperService extends Service {
   private final Runnable loop = new Runnable() {
     @Override public void run() {
       try { checkBluetooth(); } catch (Exception e) { Log.w(TAG, "loop", e); }
+      if (++loops % 6 == 0) {
+        try { returnToClockIfLeftOpen(); } catch (Exception e) { Log.w(TAG, "return to clock", e); }
+      }
       if (!wifiLock.isHeld()) wifiLock.acquire();
       main.postDelayed(this, LOOP_MS);
     }
@@ -161,7 +223,7 @@ public class KeeperService extends Service {
     if (bt == null) return;
     if (!bt.isEnabled()) {
       // the vendor music app turns Bluetooth off and on by itself; only step in if it stays off
-      if (++btOffCount >= 2) { Log.i(TAG, "Bluetooth stayed off, turning it on"); bt.enable(); btOffCount = 0; }
+      if (++btOffCount >= 4) { Log.i(TAG, "Bluetooth stayed off, turning it on"); bt.enable(); btOffCount = 0; }
       return;
     }
     btOffCount = 0;
@@ -171,7 +233,7 @@ public class KeeperService extends Service {
     int[] busy = { BluetoothProfile.STATE_CONNECTED, BluetoothProfile.STATE_CONNECTING };
     if (!sink.getDevicesMatchingConnectionStates(busy).isEmpty()) return;  // TV or a phone is on already
     long now = System.currentTimeMillis();
-    if (now - lastConnectTry < RETRY_CONNECT_MS) return;
+    if (now - lastConnectTry < retryInterval()) return;
     BluetoothDevice tv = findTv();
     if (tv == null) return;
     lastConnectTry = now;

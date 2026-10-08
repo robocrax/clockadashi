@@ -17,8 +17,18 @@ New-Item -ItemType Directory -Force "$out\classes", "$out\dex" | Out-Null
 New-Item -ItemType Directory -Force "$out\gen" | Out-Null
 & "$bt\aapt2.exe" compile --dir "$here\res" -o "$out\res.zip"
 if ($LASTEXITCODE) { throw 'aapt2 compile failed' }
+
+# The clock web app, bundled so the panel serves it with no internet (LocalSite.java).
+# Songs are not bundled: the panel fetches them from clock.nehal.boo when first asked and keeps them.
+$site = (Resolve-Path "$here\..").Path
+$siteFiles = @('index.html', 'style.css', 'app.js', 'player.js', 'intercom.js', 'timers.js', 'sw.js',
+  'manifest.json', 'events.csv', 'tracks.json') +
+  @(Get-ChildItem "$site\icons", "$site\fonts" -File | ForEach-Object { "$($_.Directory.Name)/$($_.Name)" })
+New-Item -ItemType Directory -Force "$out\native\assets\site\icons", "$out\native\assets\site\fonts" | Out-Null
+foreach ($f in $siteFiles) { Copy-Item "$site\$f" "$out\native\assets\site\$f" }
+
 & "$bt\aapt2.exe" link -o "$out\base.apk" -I $jar --manifest "$here\AndroidManifest.xml" -R "$out\res.zip" `
-  --java "$out\gen" --min-sdk-version 26 --target-sdk-version 28 --version-code 2 --version-name 1.1
+  --java "$out\gen" --min-sdk-version 26 --target-sdk-version 28 --version-code 3 --version-name 1.2
 if ($LASTEXITCODE) { throw 'aapt2 link failed' }
 
 $srcs = @(Get-ChildItem "$here\src", "$out\gen" -Recurse -Filter *.java | ForEach-Object FullName)
@@ -42,10 +52,11 @@ $lib = "$here\vendor\libpt2314.so"
 if (-not (Test-Path $lib)) { throw "missing $lib (see comment above)" }
 New-Item -ItemType Directory -Force "$out\native\lib\armeabi-v7a" | Out-Null
 Copy-Item $lib "$out\native\lib\armeabi-v7a\"
+# (aapt add keeps the forward slashes Android needs; aapt2 -A writes backslashes on Windows)
 Push-Location "$out\native"
-& "$bt\aapt.exe" add "$out\base.apk" lib/armeabi-v7a/libpt2314.so | Out-Null
+& "$bt\aapt.exe" add "$out\base.apk" lib/armeabi-v7a/libpt2314.so @($siteFiles | ForEach-Object { "assets/site/$_" }) | Out-Null
 Pop-Location
-if ($LASTEXITCODE) { throw 'aapt add (lib) failed' }
+if ($LASTEXITCODE) { throw 'aapt add (lib, site) failed' }
 
 & "$bt\zipalign.exe" -f 4 "$out\base.apk" "$out\aligned.apk"
 if ($LASTEXITCODE) { throw 'zipalign failed' }
