@@ -7,7 +7,7 @@
   'use strict';
 
   /* ---- Settings ---------------------------------------------------------- */
-  var VERSION = '3.1.0';
+  var VERSION = '3.2.0';
   var COUNTDOWN_DAYS = 8;      // a ProgressBar event gets its bar this many days ahead
   var APPROACH_DAYS = 4;       // purple tint from this many days out, until the red day before
   var PAD_HOURS = true;        // 08:05:09 rather than 8:05:09, so the clock never changes width
@@ -50,7 +50,11 @@
     eq: 'M7 18h2V6H7v12zm4 4h2V2h-2v20zm-8-8h2v-4H3v4zm12 4h2V6h-2v12zm4-8v4h2v-4h-2z',
     search: 'M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z',
     add: 'M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z',
-    remove: 'M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z'
+    minus: 'M19 13H5v-2h14v2z',
+    remove: 'M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z',
+    close: 'M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z',
+    timer: 'M15 1H9v2h6V1zm-4 13h2V8h-2v6zm8.03-6.61l1.42-1.42c-.43-.51-.9-.99-1.41-1.41l-1.42 1.42C16.07 4.74 14.12 4 12 4c-4.97 0-9 4.03-9 9s4.02 9 9 9 9-4.03 9-9c0-2.12-.74-4.07-1.97-5.61zM12 20c-3.87 0-7-3.13-7-7s3.13-7 7-7 7 3.13 7 7-3.13 7-7 7z',
+    alarm: 'M22 5.72l-4.6-3.86-1.29 1.53 4.6 3.86L22 5.72zM7.88 3.39L6.6 1.86 2 5.71l1.29 1.53 4.59-3.85zM12.5 8H11v6l4.75 2.85.75-1.23-4-2.37V8zM12 4c-4.97 0-9 4.03-9 9s4.02 9 9 9c4.97 0 9-4.03 9-9s-4.03-9-9-9zm0 16c-3.87 0-7-3.13-7-7s3.13-7 7-7 7 3.13 7 7-3.13 7-7 7z'
   };
 
   var CK = window.CK = { version: VERSION };
@@ -330,7 +334,22 @@
     el.clockBlock.style.fontSize = Math.max(24, size) + 'px';
   }
 
-  function layout() { fitTop(); fitClock(); }
+  // A countdown label shrinks a little rather than cut off "...on Thursday" when the
+  // timer button takes some of the row.
+  function fitBars() {
+    var labels = el.bars.querySelectorAll('.cd-label');
+    for (var i = 0; i < labels.length; i++) {
+      var label = labels[i];
+      label.style.fontSize = '';
+      var size = parseFloat(getComputedStyle(label).fontSize), min = size * 0.72;
+      for (var k = 0; k < 8 && label.scrollWidth > label.clientWidth + 1 && size > min; k++) {
+        size = Math.max(min, size * 0.94);
+        label.style.fontSize = size + 'px';
+      }
+    }
+  }
+
+  function layout() { fitTop(); fitBars(); fitClock(); }
   var layoutQueued = false;
   function queueLayout() {
     if (layoutQueued) return;
@@ -499,7 +518,7 @@
   function maybeReload() {
     if (!reloadWanted) return;
     var idle = Date.now() - lastTouch > RELOAD_IDLE_SEC * 1000;
-    var busy = CK.player && CK.player.busy();
+    var busy = (CK.player && CK.player.busy()) || (CK.timers && CK.timers.busy());  // never with a timer running
     var last = 0;
     try { last = +sessionStorage.getItem(SS_RELOADED) || 0; } catch (e) {}
     if (!idle || busy || !el.diag.hidden || Date.now() - last < 10 * 60000) return;
@@ -573,6 +592,7 @@
       'Browser: ' + navigator.userAgent
     ];
     if (CK.player) lines.push(CK.player.describe());
+    if (CK.timers) lines.push(CK.timers.describe());
     el.diagText.textContent = lines.join('\n');
     el.diag.hidden = false;
 
@@ -617,7 +637,11 @@
     layout();
     if (document.fonts && document.fonts.ready) document.fonts.ready.then(queueLayout);
     window.addEventListener('resize', queueLayout);
-    if ('ResizeObserver' in window) new ResizeObserver(queueLayout).observe(el.clockArea);
+    if ('ResizeObserver' in window) {
+      var watcher = new ResizeObserver(queueLayout);
+      watcher.observe(el.clockArea);
+      watcher.observe(el.bars);  // narrows when the timer button shows a countdown
+    }
 
     ['pointerdown', 'keydown', 'wheel'].forEach(function (t) {
       document.addEventListener(t, function () { lastTouch = Date.now(); }, { passive: true, capture: true });

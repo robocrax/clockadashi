@@ -1152,6 +1152,13 @@
     busy: function () { return isOpen || (!audio.paused && !audio.ended); },
     open: openFull,
     close: function () { closeFull(false); },
+    // A kitchen timer going off pauses the music, and picks it up again after Stop.
+    pauseForAlarm: function () {
+      if (audio.paused) return false;
+      audio.pause();
+      return true;
+    },
+    resumeAfterAlarm: function () { if (audio.paused && loadedSrc()) start(); },
     describe: function () {
       var n = tracks.length, count = 0;
       var lines = tracks.map(function (t) {

@@ -8,8 +8,10 @@ pushing to main deploys it, and the tablet picks the change up by itself.
   style.css      all styling
   app.js         clock, calendar, alert colours, offline data, updates, activity log
   player.js      music: mini player, full player, offline song library
+  timers.js      kitchen timers
   sw.js          service worker (makes everything work without Wi-Fi)
   manifest.json  lets Android install it as a full-screen app
+  fonts/         Google Sans Flex, cut down for this app (OFL licence)
   icons/         app icons
   events.csv     the calendar
   tracks.json    the song list
@@ -21,7 +23,12 @@ pushing to main deploys it, and the tablet picks the change up by itself.
 WHAT THE SCREEN DOES
 --------------------
 Today's events across the top, the clock filling the middle, the date
-under it, countdown bars along the bottom, music player bottom-right.
+under it, countdown bars along the bottom, then the kitchen timer button
+and the music player bottom-right.
+
+Type is Google Sans Flex, kept with the app so it works offline: the
+clock uses a slightly narrow, slightly rounded setting so its digits can
+be as tall as possible for reading across the room.
 
 The whole background is the Ekadashi alert (any "ProgressBar" event):
 
@@ -66,6 +73,27 @@ within a day.
     "image": "music/fagva.jpg" }
 
 Square art and 16:9 video thumbnails both work.
+
+
+KITCHEN TIMERS
+--------------
+Tap the round timer button (left of the music player). A new timer
+starts at the length of the last one started; 20 minutes the very first
+time. Tap - or + to change it a minute at a time, or hold to change it
+quickly. Start timer goes straight back to the clock, where the button
+counts down the next timer to finish (+1, +2... when more are running).
+
+Any number can run at once. In the timer screen each one has -1 and +1,
+pause, and cancel (tap twice, so a stray touch can't cancel it).
+
+When a timer finishes, the whole screen pulses blue and beeps, and any
+music pauses. Stop ends it (the music carries on); +1 min gives it
+another minute. Beeping stops after 10 minutes; the blue screen stays
+until Stop. Timers survive a reload or restart, and the app never
+applies an update while one is running.
+
+Sound needs one tap on the screen after the app opens (a browser rule).
+Starting a timer counts, so it only matters after a restart.
 
 
 SEARCH AND SAVE SONGS FROM YOUTUBE MUSIC
@@ -161,5 +189,9 @@ Top of app.js:
 Top of player.js:
   CLOSE_AFTER_SEC    90   full player closes itself after this long
   SONG_SERVER        http://localhost:8790   default song server address
+Top of timers.js:
+  DEFAULT_MIN        20   first timer length, before one has been started
+  MAX_MIN            720  longest timer (12 hours)
+  RING_MIN           10   minutes of beeping before it goes quiet
 
 If you change sw.js, bump VERSION inside it.

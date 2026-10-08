@@ -9,9 +9,11 @@
 <meta name="mobile-web-app-capable" content="yes">
 <link rel="manifest" href="manifest.json">
 <link rel="icon" type="image/png" href="icons/icon-192.png">
-<link rel="stylesheet" href="style.css?v=3.1.0">
-<script defer src="app.js?v=3.1.0"></script>
-<script defer src="player.js?v=3.1.0"></script>
+<link rel="preload" href="fonts/GoogleSansFlex-clockadashi.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="style.css?v=3.2.0">
+<script defer src="app.js?v=3.2.0"></script>
+<script defer src="player.js?v=3.2.0"></script>
+<script defer src="timers.js?v=3.2.0"></script>
 </head>
 <body class="s-calm">
 <noscript><div class="noscript">Javascript is not supported on this browser</div></noscript>
@@ -29,14 +31,26 @@
 
   <div id="bottom">
     <div id="bars"></div>
-    <div id="mini">
-      <button id="miniOpen" type="button" aria-label="Open music player">
-        <span class="mini-art"><img id="miniArt" alt="" hidden><span id="miniPh" class="art-ph" data-icon="note"></span></span>
-        <span class="mini-meta"><span id="miniTitle" class="mini-title">Music</span><span id="miniSub" class="mini-sub"></span></span>
+    <div id="dock">
+      <!-- Kitchen timers: a round button that shows the next timer's countdown. -->
+      <button id="timerFab" type="button" aria-label="Kitchen timers">
+        <span id="tfIcon" class="tf-icon" data-icon="timer"></span>
+        <svg id="tfRing" class="tf-ring" viewBox="0 0 40 40" aria-hidden="true" hidden>
+          <circle class="tf-track" cx="20" cy="20" r="16"></circle>
+          <circle id="tfArc" class="tf-arc" cx="20" cy="20" r="16"></circle>
+        </svg>
+        <span id="tfTime" class="tf-time num" hidden></span>
+        <span id="tfMore" class="tf-more" hidden></span>
       </button>
-      <button id="miniPlay" class="ibtn" type="button" aria-label="Play" data-icon="play"></button>
-      <button id="miniNext" class="ibtn" type="button" aria-label="Next song" data-icon="next"></button>
-      <span class="mini-progress" aria-hidden="true"><i id="miniBar"></i></span>
+      <div id="mini">
+        <button id="miniOpen" type="button" aria-label="Open music player">
+          <span class="mini-art"><img id="miniArt" alt="" hidden><span id="miniPh" class="art-ph" data-icon="note"></span></span>
+          <span class="mini-meta"><span id="miniTitle" class="mini-title">Music</span><span id="miniSub" class="mini-sub"></span></span>
+        </button>
+        <button id="miniPlay" class="ibtn" type="button" aria-label="Play" data-icon="play"></button>
+        <button id="miniNext" class="ibtn" type="button" aria-label="Next song" data-icon="next"></button>
+        <span class="mini-progress" aria-hidden="true"><i id="miniBar"></i></span>
+      </div>
     </div>
   </div>
 </main>
@@ -100,6 +114,44 @@
         <div id="searchNote" class="search-note"></div>
         <div id="searchResults" class="fp-queue"></div>
       </div>
+    </div>
+  </div>
+</section>
+
+<!-- Kitchen timers: slides up from the timer button. -->
+<section id="tp" aria-label="Kitchen timers" aria-hidden="true">
+  <header class="fp-head">
+    <button id="tpClose" class="ibtn" type="button" aria-label="Close timers" data-icon="down"></button>
+    <div class="fp-headline">Kitchen timers</div>
+    <div id="tpTime" class="fp-time"></div>
+  </header>
+  <div class="tp-body">
+    <div class="tp-new">
+      <div class="tp-stepper">
+        <button id="tpLess" class="tp-step" type="button" aria-label="One minute less" data-icon="minus"></button>
+        <div id="tpSet" class="tp-set num" aria-live="polite">20:00</div>
+        <button id="tpMore" class="tp-step" type="button" aria-label="One minute more" data-icon="add"></button>
+      </div>
+      <button id="tpStart" class="tp-start" type="button">Start timer</button>
+    </div>
+    <div class="tp-side">
+      <h2 class="tp-heading">Timers</h2>
+      <div id="tpList" class="tp-list"></div>
+      <p id="tpEmpty" class="tp-empty">No timers running. Pick a time and tap Start timer.</p>
+    </div>
+  </div>
+</section>
+
+<!-- Shown on top of everything when a timer finishes. -->
+<section id="alarm" role="alertdialog" aria-labelledby="alarmTitle" aria-describedby="alarmSub" hidden>
+  <div class="alarm-pulse" aria-hidden="true"></div>
+  <div class="alarm-body">
+    <span class="alarm-icon" data-icon="alarm"></span>
+    <h2 id="alarmTitle"></h2>
+    <p id="alarmSub"></p>
+    <div class="alarm-actions">
+      <button id="alarmAdd" type="button">+1 min</button>
+      <button id="alarmStop" type="button">Stop</button>
     </div>
   </div>
 </section>

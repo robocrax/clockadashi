@@ -11,10 +11,11 @@
    ========================================================================= */
 'use strict';
 
-var VERSION = '3.1.0';
+var VERSION = '3.2.0';
 var SHELL_CACHE = 'clockadashi-shell-' + VERSION;
 var MEDIA_CACHE = 'clockadashi-media-v1';  // filled by player.js
-var SHELL_FILES = ['index.html', 'style.css', 'app.js', 'player.js', 'manifest.json',
+var SHELL_FILES = ['index.html', 'style.css', 'app.js', 'player.js', 'timers.js', 'manifest.json',
+  'fonts/GoogleSansFlex-clockadashi.woff2',
   'icons/icon-192.png', 'icons/icon-512.png'];
 
 function abs(f) { return new URL(f, self.registration.scope).href; }

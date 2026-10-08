@@ -3,7 +3,19 @@
    black most days, a slow purple drift as one approaches, red (#830300)
    the day before, saffron (#ed6d19) on the day itself.
    The clock is the one bold thing; everything else stays quiet.
+   Kitchen timers use a cool blue, so they never read as a calendar alert.
    ========================================================================= */
+
+/* Google Sans Flex (SIL Open Font License, fonts/OFL.txt), cut down to Latin and
+   the axes used here: weight 300-800, width 74-100%, roundness 0-30. */
+@font-face {
+  font-family: "Google Sans Flex";
+  src: url("fonts/GoogleSansFlex-clockadashi.woff2") format("woff2");
+  font-weight: 300 800;
+  font-stretch: 74% 100%;
+  font-style: normal;
+  font-display: swap;
+}
 
 :root {
   --ink: #ffffff;
@@ -13,8 +25,20 @@
   --bar-fill: #ffffff;
   --surface: rgba(255, 255, 255, 0.09);
   --surface-press: rgba(255, 255, 255, 0.18);
+  --timer: #1a6dff;
+  --timer-deep: #0a2f78;
   --edge: max(14px, 2.4vw);
-  --font: Roboto, "Google Sans", Inter, system-ui, -apple-system, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  --font: "Google Sans Flex", Roboto, system-ui, -apple-system, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+}
+
+/* Big numbers (clock, timers): narrower and slightly rounded, with digits of
+   equal width so nothing shifts as the seconds tick. */
+#time, .num {
+  font-weight: 740;
+  font-stretch: 74%;
+  font-variation-settings: "ROND" 30;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
 }
 
 * { box-sizing: border-box; }
@@ -112,6 +136,7 @@ button { font: inherit; color: inherit; }
   min-height: 44px;  /* keeps the clock clear of the corner status and button */
   text-align: center;
   font-weight: 800;
+  font-variation-settings: "ROND" 30;
   line-height: 1.1;
   letter-spacing: -0.01em;
   overflow-wrap: break-word;
@@ -129,15 +154,13 @@ body.s-today .ev-minor { color: var(--ink); }
 }
 #clockBlock { text-align: center; font-size: 200px; }
 #time {
-  font-weight: 900;
   line-height: 1;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.01em;
   white-space: nowrap;
-  font-variant-numeric: tabular-nums;
 }
 #date {
   font-size: 0.17em;
-  font-weight: 400;
+  font-weight: 460;
   line-height: 1.25;
   color: var(--ink-2);
   margin-top: 0.12em;
@@ -262,9 +285,46 @@ body.s-tomorrow .cd:first-child .cd-label { font-weight: 700; }
   opacity: 0.35;
 }
 
+/* ---- Dock: kitchen timer button beside the mini player -------------------- */
+#dock { display: flex; align-items: center; }
+#timerFab {
+  position: relative;
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: clamp(64px, 9vh, 84px);
+  min-width: clamp(64px, 9vh, 84px);
+  margin: 0 12px 0 0;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: var(--surface);
+  cursor: pointer;
+}
+#timerFab:active { background: var(--surface-press); }
+.tf-icon { display: flex; }
+.tf-icon svg { width: 32px; height: 32px; fill: currentColor; }
+#timerFab.is-running { padding: 0 22px 0 14px; }
+#timerFab.is-ringing { background: var(--timer); }
+.tf-ring, .tt-ring { flex: none; transform: rotate(-90deg); }
+.tf-ring { width: 40px; height: 40px; }
+.tf-track { fill: none; stroke: rgba(255, 255, 255, 0.2); stroke-width: 4; }
+.tf-arc, .tt-arc {
+  fill: none;
+  stroke: #8fb6ff;
+  stroke-width: 4;
+  stroke-linecap: round;
+  stroke-dasharray: 100.53;
+  transition: stroke-dashoffset 0.9s linear;
+}
+.tf-time { margin-left: 12px; font-size: clamp(24px, 3.6vh, 32px); line-height: 1; }
+#timerFab.is-paused .tf-time { color: var(--ink-2); }
+.tf-more { margin-left: 10px; font-size: 15px; font-weight: 600; color: var(--ink-2); }
+
 @media (orientation: portrait) {
   #bottom { grid-template-columns: minmax(0, 1fr); grid-row-gap: 2vh; }
-  #mini { width: 100%; }
+  #mini { flex: 1; width: auto; }
   .cd-label { font-size: clamp(16px, 4vw, 40px); }
 }
 
@@ -636,6 +696,225 @@ body.s-tomorrow .cd:first-child .cd-label { font-weight: 700; }
   .fp-art-box { flex: none; height: 34vh; }
 }
 
+/* =========================================================================
+   Kitchen timers: big targets for floury hands, readable across the kitchen.
+   ========================================================================= */
+#tp {
+  --ink-2: rgba(255, 255, 255, 0.72);
+  --ink-3: rgba(255, 255, 255, 0.45);
+  --surface-press: rgba(255, 255, 255, 0.18);
+  position: fixed;
+  top: 0; right: 0; bottom: 0; left: 0;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  background: linear-gradient(180deg, #0b2550 0%, #000 72%);
+  color: #fff;
+  visibility: hidden;
+  transform: translateY(100%);
+  transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.25, 1), visibility 0s linear 0.3s;
+}
+#tp.open {
+  visibility: visible;
+  transform: none;
+  transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.25, 1), visibility 0s;
+}
+#tp .fp-headline { color: #fff; font-size: 18px; font-weight: 600; }
+.tp-body {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+  grid-column-gap: 4vw;
+  padding: 0 4vw max(14px, 3vh);
+}
+.tp-new {
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+.tp-stepper { display: flex; align-items: center; }
+.tp-step {
+  flex: none;
+  width: clamp(72px, 12vh, 108px);
+  height: clamp(72px, 12vh, 108px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.12);
+  cursor: pointer;
+  touch-action: none;
+}
+.tp-step svg { width: 46%; height: 46%; fill: #fff; }
+.tp-step:active { background: rgba(255, 255, 255, 0.26); }
+.tp-step:disabled { opacity: 0.3; }
+.tp-set {
+  min-width: 2.5em;
+  margin: 0 clamp(8px, 1.6vw, 28px);
+  text-align: center;
+  font-size: clamp(72px, min(10vw, 19vh), 168px);
+  line-height: 1;
+}
+.tp-set.is-long { font-size: clamp(56px, min(7.4vw, 14vh), 124px); }  /* 1:30:00 needs more room */
+.tp-start {
+  margin-top: clamp(24px, 6vh, 56px);
+  height: clamp(64px, 10vh, 84px);
+  padding: 0 52px;
+  border: 0;
+  border-radius: 999px;
+  background: #fff;
+  color: #000;
+  font-size: clamp(20px, 2.3vw, 28px);
+  font-weight: 700;
+  cursor: pointer;
+}
+.tp-start:active { background: rgba(255, 255, 255, 0.82); }
+.tp-side { min-height: 0; display: flex; flex-direction: column; justify-content: center; }
+.tp-heading { flex: none; margin: 0 0 12px; font-size: 18px; font-weight: 700; }
+.tp-list { flex: 0 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
+.tp-empty { margin: 0; font-size: 17px; line-height: 1.5; color: var(--ink-2); }
+
+.tt-row {
+  display: flex;
+  align-items: center;
+  padding: 12px 10px 12px 14px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.08);
+}
+.tt-row + .tt-row { margin-top: 10px; }
+.tt-row.is-ringing { background: var(--timer); }
+.tt-row.is-ringing .tt-arc { stroke: #fff; }
+.tt-badge { position: relative; flex: none; width: 56px; height: 56px; }
+.tt-ring { width: 100%; height: 100%; }
+.tt-n {
+  position: absolute;
+  top: 0; right: 0; bottom: 0; left: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 19px;
+  font-weight: 700;
+}
+.tt-text { flex: 1; min-width: 0; padding: 0 12px 0 16px; }
+.tt-left { display: block; font-size: clamp(34px, 4.2vw, 48px); line-height: 1.05; }
+.tt-row.is-paused .tt-left { color: var(--ink-2); }
+.tt-sub {
+  display: block;
+  margin-top: 2px;
+  font-size: 14px;
+  color: var(--ink-2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.tt-row.is-ringing .tt-sub { color: rgba(255, 255, 255, 0.9); }
+.tt-actions { flex: none; display: flex; align-items: center; }
+.tt-btn { margin-left: 6px; }
+.tt-pill {
+  height: 48px;
+  min-width: 56px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.13);
+  font-size: 17px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+}
+.tt-pill:active { background: rgba(255, 255, 255, 0.26); }
+.tt-pill:disabled { opacity: 0.3; }
+.tt-row.is-ringing .tt-pill { background: #fff; color: var(--timer-deep); }
+.tt-btn.is-confirm {
+  width: auto;
+  padding: 0 16px;
+  border-radius: 999px;
+  background: #b3261e;
+  color: #fff;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+/* ---- Timer finished: the whole screen pulses blue until Stop ---------------- */
+#alarm {
+  position: fixed;
+  top: 0; right: 0; bottom: 0; left: 0;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--timer-deep);
+  color: #fff;
+  text-align: center;
+}
+.alarm-pulse {
+  position: absolute;
+  top: 0; right: 0; bottom: 0; left: 0;
+  background: var(--timer);
+  animation: alarm-pulse 0.9s ease-in-out infinite alternate;
+}
+@keyframes alarm-pulse { from { opacity: 0.15; } to { opacity: 1; } }
+.alarm-body { position: relative; padding: 24px; }
+.alarm-icon { display: inline-flex; }
+.alarm-icon svg {
+  width: clamp(64px, 12vh, 112px);
+  height: clamp(64px, 12vh, 112px);
+  fill: #fff;
+  animation: alarm-shake 0.45s ease-in-out infinite;
+}
+@keyframes alarm-shake {
+  0%, 100% { transform: rotate(0); }
+  25% { transform: rotate(-12deg); }
+  75% { transform: rotate(12deg); }
+}
+#alarmTitle {
+  margin: 14px 0 8px;
+  font-size: clamp(44px, 8vw, 108px);
+  font-weight: 800;
+  font-variation-settings: "ROND" 30;
+  line-height: 1.05;
+}
+#alarmSub { margin: 0 0 clamp(28px, 7vh, 64px); font-size: clamp(18px, 2.5vw, 30px); color: rgba(255, 255, 255, 0.9); }
+.alarm-actions { display: flex; align-items: center; justify-content: center; }
+#alarmAdd {
+  height: clamp(64px, 10vh, 88px);
+  margin-right: 20px;
+  padding: 0 34px;
+  border: 2px solid rgba(255, 255, 255, 0.85);
+  border-radius: 999px;
+  background: transparent;
+  color: #fff;
+  font-size: clamp(20px, 2.6vw, 30px);
+  font-weight: 700;
+  cursor: pointer;
+}
+#alarmStop {
+  height: clamp(84px, 14vh, 116px);
+  min-width: clamp(220px, 30vw, 380px);
+  padding: 0 52px;
+  border: 0;
+  border-radius: 999px;
+  background: #fff;
+  color: var(--timer-deep);
+  font-size: clamp(30px, 4.2vw, 48px);
+  font-weight: 800;
+  cursor: pointer;
+}
+
+@media (orientation: portrait) {
+  .tp-body {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr);
+    grid-row-gap: 4vh;
+  }
+  .tp-side { justify-content: flex-start; }
+}
+
 /* ---- Diagnostics (long-press the clock) ------------------------------------ */
 #diag {
   position: fixed;
@@ -670,7 +949,10 @@ body.s-tomorrow .cd:first-child .cd-label { font-weight: 700; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  #fp, #fp.open { transition: none; }
+  #fp, #fp.open, #tp, #tp.open { transition: none; }
+  .alarm-pulse { animation: none; opacity: 0.7; }
+  .alarm-icon svg { animation: none; }
+  .tf-arc, .tt-arc { transition: none; }
   .cd-fill { transition: none; }
   .ibtn.is-buffering::after { animation: none; border-color: var(--ink-3); }
 }
