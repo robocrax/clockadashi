@@ -31,12 +31,12 @@
   --font: "Google Sans Flex", Roboto, system-ui, -apple-system, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
 }
 
-/* Big numbers (clock, timers): narrower and slightly rounded, with digits of
-   equal width so nothing shifts as the seconds tick. */
+/* Big numbers (clock, timers): full width at the heaviest weight, square-cornered,
+   with digits of equal width so nothing shifts as the time changes. */
 #time, .num {
-  font-weight: 740;
-  font-stretch: 74%;
-  font-variation-settings: "ROND" 30;
+  font-weight: 800;
+  font-stretch: 100%;
+  font-variation-settings: "ROND" 0;
   font-variant-numeric: tabular-nums;
   font-feature-settings: "tnum";
 }
@@ -154,10 +154,30 @@ body.s-today .ev-minor { color: var(--ink); }
 }
 #clockBlock { text-align: center; font-size: 200px; }
 #time {
+  position: relative;
+  display: inline-block;
+  padding: 0.06em 0.2em 0.08em;
   line-height: 1;
   letter-spacing: -0.01em;
   white-space: nowrap;
 }
+
+/* The minute ring round HH:MM (shaped and filled by app.js): a faint full
+   track, and the elapsed part as a white line with a soft warm glow made of
+   three wide, fading strokes (cheaper than a blur on the panel). */
+#minuteRing { position: absolute; top: 0; left: 0; overflow: visible; pointer-events: none; }
+#minuteRing path { fill: none; stroke-linecap: round; stroke-linejoin: round; }
+.mr-track { stroke: rgba(255, 255, 255, 0.1); stroke-width: var(--mr-w, 8px); }
+.mr-line, .mr-glow {
+  stroke-dasharray: 100;
+  stroke-dashoffset: 100;
+  transition: stroke-dashoffset 0.6s cubic-bezier(0.3, 0.7, 0.4, 1);
+}
+.mr-line { stroke: #fff; stroke-width: var(--mr-w, 8px); }
+.mr-glow-1 { stroke: rgba(255, 236, 190, 0.32); stroke-width: calc(var(--mr-w, 8px) * 1.9); }
+.mr-glow-2 { stroke: rgba(255, 226, 170, 0.13); stroke-width: calc(var(--mr-w, 8px) * 3.3); }
+.mr-glow-3 { stroke: rgba(255, 214, 150, 0.06); stroke-width: calc(var(--mr-w, 8px) * 5.2); }
+#minuteRing.mr-snap .mr-line, #minuteRing.mr-snap .mr-glow { transition: none; }
 #date {
   font-size: 0.17em;
   font-weight: 460;
@@ -1040,6 +1060,7 @@ body.timers-on .tf-label { margin-left: 8px; font-size: clamp(16px, 2.7vh, 22px)
 
 @media (prefers-reduced-motion: reduce) {
   #fp, #fp.open, #tp, #tp.open { transition: none; }
+  .mr-line, .mr-glow { transition: none; }
   .alarm-pulse { animation: none; opacity: 0.7; }
   .alarm-icon svg { animation: none; }
   .tf-arc, .tt-arc { transition: none; }

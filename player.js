@@ -18,6 +18,7 @@
   var LEGACY_CACHES = ['ghanshyam-dj-v1'];   // the very first version saved songs here too
   var PIECE = 1024 * 1024;
   var CLOSE_AFTER_SEC = 90;                  // the full player slides away after this long untouched
+  var RESET_AFTER_SILENCE_MIN = 10;          // nothing played this long: back to the first song at 0:00
   var RECHECK_FILES_HOURS = 24;              // look for songs replaced on the site this often
   var SONG_SERVER = 'http://localhost:8790'; // the panel app, or server/ytdl_server.py; change with ?songserver=
   var LS_PLAYER = 'clockadashi_player';
@@ -231,6 +232,29 @@
     savePrefs();
     renderNow();
   }
+
+  // After a long silence the player goes back to the top of "Up next", at 0:00,
+  // so the next Play starts the list from the beginning.
+  var silentSince = Date.now();
+  audio.addEventListener('playing', function () { silentSince = 0; });
+  audio.addEventListener('pause', function () { silentSince = Date.now(); });
+  function backToStartWhenSilent() {
+    if (!audio.paused || !silentSince || isOpen) return;
+    if (Date.now() - silentSince < RESET_AFTER_SILENCE_MIN * 60000) return;
+    silentSince = 0;  // once per silence
+    var first = -1;
+    for (var k = 0; k < order.length && first < 0; k++) if (playable(order[k])) first = order[k];
+    if (first < 0) return;
+    if (cur === first && !prefs.at && !(audio.currentTime > 0.5)) return;  // already there
+    wantPlay = false;
+    prefs.id = tracks[first].id;
+    prefs.at = 0;
+    savePrefs();
+    if (!prime(first, 0)) cur = first;
+    renderNow();
+    log('music', 'back to the first song after ' + RESET_AFTER_SILENCE_MIN + ' minutes without music');
+  }
+  setInterval(backToStartWhenSilent, 30000);
 
   function keepPosition(force) {
     var t = tracks[cur];

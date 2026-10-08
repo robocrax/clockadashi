@@ -10,11 +10,11 @@
 <link rel="manifest" href="manifest.json">
 <link rel="icon" type="image/png" href="icons/icon-192.png">
 <link rel="preload" href="fonts/GoogleSansFlex-clockadashi.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="style.css?v=3.5.0">
-<script defer src="app.js?v=3.5.0"></script>
-<script defer src="player.js?v=3.5.0"></script>
-<script defer src="intercom.js?v=3.5.0"></script>
-<script defer src="timers.js?v=3.5.0"></script>
+<link rel="stylesheet" href="style.css?v=3.6.0">
+<script defer src="app.js?v=3.6.0"></script>
+<script defer src="player.js?v=3.6.0"></script>
+<script defer src="intercom.js?v=3.6.0"></script>
+<script defer src="timers.js?v=3.6.0"></script>
 </head>
 <body class="s-calm">
 <noscript><div class="noscript">Javascript is not supported on this browser</div></noscript>
@@ -25,7 +25,17 @@
 
   <div id="clockArea">
     <div id="clockBlock">
-      <div id="time"><span id="hh">--</span>:<span id="mm">--</span>:<span id="ss">--</span></div>
+      <!-- HH:MM inside a glowing border that fills clockwise through the minute (the seconds). -->
+      <div id="time">
+        <svg id="minuteRing" aria-hidden="true">
+          <path class="mr-track" pathLength="100"></path>
+          <path class="mr-glow mr-glow-3" pathLength="100"></path>
+          <path class="mr-glow mr-glow-2" pathLength="100"></path>
+          <path class="mr-glow mr-glow-1" pathLength="100"></path>
+          <path class="mr-line" pathLength="100"></path>
+        </svg>
+        <span id="hh">--</span>:<span id="mm">--</span>
+      </div>
       <div id="date"></div>
     </div>
   </div>

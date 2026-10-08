@@ -28,9 +28,12 @@ Today's events across the top, the clock filling the middle, the date
 under it, the kitchen timers bottom-left, countdown bars along the
 bottom, and the music player bottom-right.
 
-Type is Google Sans Flex, kept with the app so it works offline: the
-clock uses a slightly narrow, slightly rounded setting so its digits can
-be as tall as possible for reading across the room.
+The clock shows hours and minutes; the seconds are a glowing border round
+them that fills clockwise from the top through each minute (empty at :00,
+complete at :59), which leaves room for bigger digits.
+
+Type is Google Sans Flex, kept with the app so it works offline; the clock
+and timer digits use its full width at the heaviest weight.
 
 The whole background is the Ekadashi alert (any "ProgressBar" event):
 
@@ -262,12 +265,13 @@ SETTINGS
 Top of app.js:
   COUNTDOWN_DAYS     8    days before a ProgressBar event its bar appears
   APPROACH_DAYS      4    purple tint starts this many days before
-  PAD_HOURS          true 08:05:09 instead of 8:05:09 (keeps width fixed)
+  PAD_HOURS          true 08:05 instead of 8:05 (keeps width fixed)
   SYNC_EVERY_MIN     30   calendar / song list / app update checks
   RELOAD_IDLE_SEC    90   idle time before an update is applied
   FULLSCREEN_IDLE_SEC 60  idle time before a browser tab reopens full screen
 Top of player.js:
   CLOSE_AFTER_SEC    90   full player closes itself after this long
+  RESET_AFTER_SILENCE_MIN 10  no music this long: back to the first song at 0:00
   SONG_SERVER        http://localhost:8790   default song server address
 Top of timers.js:
   DEFAULT_MIN        20   first timer length, before one has been started

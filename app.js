@@ -7,10 +7,10 @@
   'use strict';
 
   /* ---- Settings ---------------------------------------------------------- */
-  var VERSION = '3.5.0';
+  var VERSION = '3.6.0';
   var COUNTDOWN_DAYS = 8;      // a ProgressBar event gets its bar this many days ahead
   var APPROACH_DAYS = 4;       // purple tint from this many days out, until the red day before
-  var PAD_HOURS = true;        // 08:05:09 rather than 8:05:09, so the clock never changes width
+  var PAD_HOURS = true;        // 08:05 rather than 8:05, so the clock never changes width
   var SYNC_EVERY_MIN = 30;     // re-check calendar, song list and app files this often
   var PROBE_ONLINE_SEC = 120;  // connection check while online…
   var PROBE_OFFLINE_SEC = 30;  // …and while offline, to notice Wi-Fi coming back quickly
@@ -303,7 +303,7 @@
     var mm = pad2(d.getMinutes());
     if (hh !== shown.h) { shown.h = el.hh.textContent = hh; if (!PAD_HOURS) fitClock(); }
     if (mm !== shown.m) { shown.m = el.mm.textContent = mm; renderMinute(d); }
-    el.ss.textContent = pad2(d.getSeconds());
+    fillRing(d.getSeconds());
     emit('tick', d);
     setTimeout(tick, 1010 - ((Date.now() + offsetMs) % 1000));
   }
@@ -333,8 +333,40 @@
     el.clockBlock.style.fontSize = '100px';
     var r = el.clockBlock.getBoundingClientRect();
     if (!r.width || !r.height) return;
-    var size = Math.floor(100 * Math.min(w * 0.97 / r.width, h * 0.95 / r.height));
+    var size = Math.floor(100 * Math.min(w * 0.95 / r.width, h * 0.94 / r.height));  // room for the ring's glow
     el.clockBlock.style.fontSize = Math.max(24, size) + 'px';
+    shapeRing();
+  }
+
+  /* ---- The minute ring: in place of the seconds, a glowing border round HH:MM
+     fills clockwise from the top: empty at :00, complete at :59. Each second is
+     one small step (no per-frame animation; the glow is two faint wide strokes,
+     not a blur filter, so it costs next to nothing on the panel). -------------- */
+  var ringPaths = null, ringShown = -1;
+  function shapeRing() {
+    var svg = el.minuteRing, w = el.time.offsetWidth, h = el.time.offsetHeight;
+    if (!svg || !w || !h) return;
+    var line = Math.max(3, parseFloat(el.clockBlock.style.fontSize) * 0.028);
+    var i = line / 2, x1 = w - i, y1 = h - i, r = Math.min(h * 0.22, w / 2 - i);
+    var d = 'M' + w / 2 + ' ' + i + 'H' + (x1 - r) + 'A' + r + ' ' + r + ' 0 0 1 ' + x1 + ' ' + (i + r) +
+      'V' + (y1 - r) + 'A' + r + ' ' + r + ' 0 0 1 ' + (x1 - r) + ' ' + y1 + 'H' + (i + r) +
+      'A' + r + ' ' + r + ' 0 0 1 ' + i + ' ' + (y1 - r) + 'V' + (i + r) + 'A' + r + ' ' + r + ' 0 0 1 ' + (i + r) + ' ' + i + 'Z';
+    svg.setAttribute('width', w);
+    svg.setAttribute('height', h);
+    svg.setAttribute('viewBox', '0 0 ' + w + ' ' + h);
+    svg.style.setProperty('--mr-w', line + 'px');
+    ringPaths = svg.querySelectorAll('path');
+    for (var k = 0; k < ringPaths.length; k++) ringPaths[k].setAttribute('d', d);
+    ringShown = -1;
+    fillRing(now().getSeconds());
+  }
+  function fillRing(sec) {
+    if (!ringPaths || sec === ringShown) return;
+    var reset = sec < ringShown || ringShown < 0;  // a new minute: snap back instead of unwinding
+    ringShown = sec;
+    el.minuteRing.classList.toggle('mr-snap', reset);
+    var offset = String(100 - sec / 59 * 100);
+    for (var k = 1; k < ringPaths.length; k++) ringPaths[k].style.strokeDashoffset = offset;
   }
 
   // A countdown label shrinks a little rather than cut off "...on Thursday" when the
@@ -633,7 +665,7 @@
   var lastTouch = Date.now();
 
   function boot() {
-    ['screen', 'top', 'clockArea', 'clockBlock', 'hh', 'mm', 'ss', 'date', 'bars', 'status', 'statusIcon',
+    ['screen', 'top', 'clockArea', 'clockBlock', 'time', 'minuteRing', 'hh', 'mm', 'date', 'bars', 'status', 'statusIcon',
       'statusText', 'fsBtn', 'diag', 'diagText', 'diagClose', 'diagClear'].forEach(function (id) { el[id] = $(id); });
     Array.prototype.forEach.call(document.querySelectorAll('[data-icon]'), function (node) {
       setIcon(node, node.getAttribute('data-icon'));
