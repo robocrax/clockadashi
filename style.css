@@ -121,19 +121,32 @@ button { font: inherit; color: inherit; }
 }
 
 /* =========================================================================
-   Clock screen: events / clock / countdowns + music, as three grid rows.
-   app.js sizes the clock to fill whatever the middle row is given.
+   Clock screen: music + timers / events / clock / countdowns, as four grid
+   rows. app.js sizes the clock to fill whatever the clock row is given.
    ========================================================================= */
 #screen {
   position: fixed;
   top: 0; right: 0; bottom: 0; left: 0;
   display: grid;
-  grid-template-rows: auto minmax(0, 1fr) auto;
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
   padding: max(10px, 1.8vh) var(--edge) max(12px, 2.6vh);
 }
 
+/* Top row: the music player top-left, the calendar and kitchen timers top-right,
+   any status (offline, previewing, saving songs) between them. */
+#head {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-areas: "dock status tools";
+  grid-column-gap: max(12px, 1.4vw);
+  align-items: start;
+  margin-bottom: max(6px, 1vh);
+}
+#dock { grid-area: dock; }
+#status { grid-area: status; }
+#tools { grid-area: tools; display: flex; align-items: flex-start; justify-content: flex-end; gap: max(10px, 1vw); }
+
 #top {
-  min-height: 44px;  /* keeps the clock clear of the corner status and button */
   text-align: center;
   font-weight: 800;
   font-variation-settings: "ROND" 30;
@@ -188,21 +201,9 @@ body.s-today .ev-minor { color: var(--ink); }
   white-space: nowrap;
 }
 
-#bottom {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  grid-template-areas: "timers bars dock";
-  grid-column-gap: var(--edge);
-  align-items: end;
-}
-#bars { grid-area: bars; }
-#dock { grid-area: dock; }
-/* timers running: the countdown bars get their own row above */
-body.timers-on #bottom { grid-template-areas: "bars bars bars" "timers . dock"; }
-body.timers-on #bars:not(:empty) { margin-bottom: max(12px, 2.2vh); }
-
-/* ---- Countdown bars: the big one first, any later ones smaller ---------- */
+/* ---- Countdown bars, full width: the big one first, any later ones smaller -- */
 #bars { min-width: 0; }
+#bars:not(:empty) { padding-top: max(6px, 1vh); }
 .cd + .cd { margin-top: max(10px, 1.8vh); }
 .cd-label {
   font-size: clamp(16px, 2.6vw, 44px);
@@ -230,7 +231,7 @@ body.s-tomorrow .cd:first-child .cd-label { font-weight: 700; }
 .cd-more .cd-label { font-size: clamp(13px, 1.8vw, 30px); color: var(--ink-2); }
 .cd-more .cd-track { height: clamp(8px, 1.4vh, 16px); }
 
-/* ---- Mini player: always visible, tap to open the full player ---------- */
+/* ---- Mini player, top-left: always visible, tap to open the full player -- */
 #mini {
   position: relative;
   display: flex;
@@ -308,12 +309,12 @@ body.s-tomorrow .cd:first-child .cd-label { font-weight: 700; }
 }
 #miniTalk.is-playing { background: var(--surface-press); }
 
-/* ---- Kitchen timers, bottom-left ------------------------------------------
+/* ---- Kitchen timers, top-right ----------------------------------------------
    Idle: a "Timer" pill. Running: the next timer to finish in digits readable
-   across the room (with its progress ring), plus a card with the two after it.
-   While timers run the countdown bars move up a row (see #bottom), and the
-   clock shrinks to make room. Ringing turns the corner blue. */
-#timerDock { grid-area: timers; display: flex; align-items: flex-end; gap: max(10px, 1vw); }
+   across the room (with its progress ring), plus a card to its left with the
+   two after it. The top row grows and the clock shrinks to make room.
+   Ringing turns the corner blue. */
+#timerDock { display: flex; align-items: flex-start; gap: max(10px, 1vw); }
 #timerFab, #timerNext {
   flex: none;
   border: 0;
@@ -412,50 +413,58 @@ body.timers-on .tf-label { margin-left: 8px; font-size: clamp(16px, 2.7vh, 22px)
   50% { box-shadow: 0 0 0 12px rgba(217, 48, 37, 0); }
 }
 
-/* ---- Corners: connection / saving status, full-screen toggle ----------- */
+/* ---- Top row: status in the middle, full-screen toggle, calendar --------- */
 #status {
-  position: fixed;
-  top: calc(max(2px, 0.8vh) + 10px);    /* level with the calendar button */
-  left: calc(max(2px, 0.8vw) + 52px);   /* just right of it */
   display: flex;
   align-items: center;
-  height: 28px;
-  font-size: 14px;
+  justify-content: center;
+  min-width: 0;
+  height: clamp(64px, 9vh, 84px);  /* level with the music player */
+  font-size: clamp(14px, 2.2vh, 18px);
   color: var(--ink-2);
+  white-space: nowrap;
   pointer-events: none;
 }
-#statusIcon { display: flex; margin-right: 6px; }
-#statusIcon svg { width: 18px; height: 18px; fill: currentColor; }
-#fsBtn {
-  position: fixed;
-  top: max(2px, 0.8vh);
-  right: max(2px, 0.8vw);
-  opacity: 0.35;
-}
-/* Date preview, top-left: barely there until a preview is on. */
+#statusText { overflow: hidden; text-overflow: ellipsis; }
+#statusIcon { display: flex; flex: none; margin-right: 8px; }
+#statusIcon svg { width: 20px; height: 20px; fill: currentColor; }
+#fsBtn { margin-top: calc((clamp(64px, 9vh, 84px) - 48px) / 2); opacity: 0.35; }
 #calBtn {
-  position: fixed;
-  top: max(2px, 0.8vh);
-  left: max(2px, 0.8vw);
-  opacity: 0.16;
+  width: clamp(64px, 9vh, 84px);
+  height: clamp(64px, 9vh, 84px);
+  background: var(--surface);
 }
-#calBtn svg { width: 24px; height: 24px; }
-#calBtn.is-on { opacity: 1; background: var(--surface-press); }
-/* The date field only opens the browser's date picker; it is never seen. */
-#calInput {
+#calBtn svg { width: 46%; height: 46%; }
+#calBtn:active { background: var(--surface-press); }
+#calBtn.is-on { background: #fff; color: #000; }
+
+/* Previewing a date: a day back and a day forward, at the screen's sides. */
+.day-arrow {
   position: fixed;
-  top: max(2px, 0.8vh);
-  left: max(2px, 0.8vw);
-  width: 48px;
-  height: 48px;
-  opacity: 0;
-  pointer-events: none;
-  border: 0;
+  top: 50%;
+  z-index: 5;
+  width: clamp(56px, 9vh, 76px);
+  height: clamp(56px, 9vh, 76px);
+  margin-top: calc(clamp(56px, 9vh, 76px) / -2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
   padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.14);
+  color: #fff;
+  cursor: pointer;
 }
+.day-arrow:active { background: rgba(255, 255, 255, 0.3); }
+.day-arrow svg { width: 60%; height: 60%; fill: currentColor; }
+#dayPrev { left: max(6px, 0.8vw); }
+#dayNext { right: max(6px, 0.8vw); }
 
 @media (orientation: portrait) {
-  #bottom, body.timers-on #bottom { grid-template-columns: minmax(0, 1fr); grid-template-areas: "bars" "timers" "dock"; grid-row-gap: 2vh; }
+  #head { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "dock tools" "status status"; grid-row-gap: 1vh; }
+  #dock { min-width: 0; }
+  #status { height: 28px; }
   #mini { width: auto; flex: 1; min-width: 0; }
   .cd-label { font-size: clamp(16px, 4vw, 40px); }
 }
@@ -1047,6 +1056,133 @@ body.timers-on .tf-label { margin-left: 8px; font-size: clamp(16px, 2.7vh, 22px)
   .tp-side { justify-content: flex-start; }
 }
 
+/* =========================================================================
+   The month (calendar button): Gujarati month names and Vikram Samvat above,
+   Ekadashis marked with a fruit (a fasting day), countdown days in saffron,
+   other events as a dot. Tapping a day previews it on the clock screen.
+   ========================================================================= */
+#cs {
+  --ink-2: rgba(255, 255, 255, 0.72);
+  --surface-press: rgba(255, 255, 255, 0.18);
+  --saffron: #ed6d19;
+  position: fixed;
+  top: 0; right: 0; bottom: 0; left: 0;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  background: linear-gradient(180deg, #3a1a06 0%, #000 70%);
+  color: #fff;
+  visibility: hidden;
+  transform: translateY(100%);
+  transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.25, 1), visibility 0s linear 0.3s;
+}
+#cs.open {
+  visibility: visible;
+  transform: none;
+  transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.25, 1), visibility 0s;
+}
+.cs-nav { flex: 1; min-width: 0; display: flex; align-items: center; justify-content: center; }
+.cs-title { min-width: 0; padding: 0 14px; text-align: center; }
+#csMonth { font-size: 22px; font-weight: 700; white-space: nowrap; }
+#csLunar { margin-top: 2px; font-size: 14px; color: var(--ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cs-today {
+  flex: none;
+  height: 44px;
+  padding: 0 22px;
+  border: 0;
+  border-radius: 999px;
+  background: #fff;
+  color: #000;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.cs-today:active { background: rgba(255, 255, 255, 0.82); }
+
+.cs-body {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr);
+  grid-column-gap: 3vw;
+  padding: 4px 3vw max(14px, 2.6vh);
+}
+.cs-month { min-height: 0; display: flex; flex-direction: column; }
+.cs-week, .cs-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); grid-column-gap: 6px; }
+.cs-week { flex: none; padding-bottom: 6px; font-size: 14px; font-weight: 600; color: var(--ink-2); text-align: center; }
+.cs-grid { flex: 1; min-height: 0; grid-auto-rows: minmax(0, 1fr); grid-row-gap: 6px; }
+.cs-day {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  border: 2px solid transparent;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.06);
+  cursor: pointer;
+  overflow: hidden;
+}
+.cs-day:active { background: var(--surface-press); }
+.cs-day.is-blank { visibility: hidden; }
+.cs-day.is-past { opacity: 0.45; }
+.cs-n { position: absolute; top: 6px; left: 9px; font-size: clamp(16px, 2.6vh, 22px); font-weight: 700; line-height: 1; }
+.cs-fruit {
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -42%);
+  font-size: clamp(26px, 5.4vh, 44px);
+  line-height: 1;
+}
+.cs-moon { position: absolute; top: 5px; right: 7px; font-size: clamp(12px, 2vh, 16px); line-height: 1; }
+.cs-lm {
+  position: absolute;
+  left: 0; right: 0; bottom: 4px;
+  font-size: clamp(10px, 1.6vh, 13px);
+  font-weight: 700;
+  color: #ffb27a;
+  text-align: center;
+  white-space: nowrap;
+}
+.cs-dot { position: absolute; left: 50%; bottom: 9px; width: 7px; height: 7px; margin-left: -3.5px; border-radius: 50%; background: #fff; }
+.cs-lm + .cs-dot { display: none; }
+.cs-day.is-bar { background: rgba(237, 109, 25, 0.3); border-color: var(--saffron); }
+.cs-day.is-today { box-shadow: inset 0 0 0 2px #fff; }
+.cs-day.is-preview { background: #fff; color: #000; border-color: #fff; }
+.cs-day.is-preview .cs-lm { color: #a3480b; }
+.cs-day.is-preview .cs-dot { background: #000; }
+
+.cs-side { min-height: 0; display: flex; flex-direction: column; }
+.cs-list { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
+.cl-row {
+  display: flex;
+  align-items: baseline;
+  width: 100%;
+  margin: 0;
+  padding: 9px 10px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+.cl-row:active { background: var(--surface-press); }
+.cl-row.is-preview { background: rgba(255, 255, 255, 0.14); }
+.cl-date { flex: none; width: 4.6em; font-size: 15px; font-weight: 600; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.cl-icon { flex: none; width: 1.7em; font-size: 17px; }
+.cl-names { flex: 1; min-width: 0; font-size: 17px; line-height: 1.35; }
+.cl-names b { font-weight: 700; color: #ffb27a; }
+.cs-note, .cs-legend { flex: none; margin: 8px 0 0; font-size: 14px; line-height: 1.5; color: var(--ink-2); }
+.cs-note:empty { display: none; }
+.cs-key { display: inline-block; margin: 0 6px 0 14px; vertical-align: middle; }
+.cs-key-fruit { margin-left: 0; font-size: 16px; }
+.cs-key-bar { width: 16px; height: 16px; border: 2px solid var(--saffron); border-radius: 5px; background: rgba(237, 109, 25, 0.3); }
+.cs-key-dot { width: 7px; height: 7px; border-radius: 50%; background: #fff; }
+
+@media (orientation: portrait) {
+  .cs-body { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1.3fr) minmax(0, 1fr); grid-row-gap: 2vh; }
+}
+
 /* ---- Diagnostics (long-press the clock) ------------------------------------ */
 #diag {
   position: fixed;
@@ -1081,7 +1217,7 @@ body.timers-on .tf-label { margin-left: 8px; font-size: clamp(16px, 2.7vh, 22px)
 }
 
 @media (prefers-reduced-motion: reduce) {
-  #fp, #fp.open, #tp, #tp.open { transition: none; }
+  #fp, #fp.open, #tp, #tp.open, #cs, #cs.open { transition: none; }
   .mr-line, .mr-glow { transition: none; }
   .alarm-pulse { animation: none; opacity: 0.7; }
   .alarm-icon svg { animation: none; }

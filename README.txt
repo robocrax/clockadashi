@@ -9,7 +9,8 @@ pushing to main deploys it, and the tablet picks the change up by itself.
   app.js         clock, calendar, alert colours, offline data, updates, activity log
   player.js      music: mini player, full player, offline song library
   intercom.js    hold-to-talk microphone next to the mini player
-  timers.js      kitchen timers (the "Timer" button, bottom-left)
+  timers.js      kitchen timers (the "Timer" button, top-right)
+  calendar.js    the month (calendar button, top-right): Ekadashis, Gujarati months
   sw.js          service worker (makes everything work without Wi-Fi)
   manifest.json  lets Android install it as a full-screen app
   fonts/         Google Sans Flex, cut down for this app (OFL licence)
@@ -24,9 +25,10 @@ pushing to main deploys it, and the tablet picks the change up by itself.
 
 WHAT THE SCREEN DOES
 --------------------
-Today's events across the top, the clock filling the middle, the date
-under it, the kitchen timers bottom-left, countdown bars along the
-bottom, and the music player bottom-right.
+Along the top: the music player on the left, the calendar and the kitchen
+timers on the right. Below them today's events, the clock filling the
+middle, the date under it, and the countdown bars across the full width
+of the bottom.
 
 The clock shows hours and minutes; the seconds are a glowing border round
 them that fills clockwise from the top through each minute (empty at :00,
@@ -61,7 +63,7 @@ EVENTS.CSV
 
 MUSIC
 -----
-Always visible bottom-right. Tap the song name or artwork to open the full
+Always visible top-left. Tap the song name or artwork to open the full
 player (YouTube Music style): big artwork, seek bar, previous/next,
 shuffle, repeat (all / one / off), volume, and the "Up next" list where a
 tick means the song is saved on the tablet. The Android back button or
@@ -82,14 +84,14 @@ Square art and 16:9 video thumbnails both work.
 
 KITCHEN TIMERS
 --------------
-Tap the "Timer" button in the bottom-left corner (the first tap of each
+Tap the "Timer" button in the top-right corner (the first tap of each
 visit throws a "Let's BAKE!" shower of cookies and cupcakes). A new timer
 starts at the length of the last one started; 20 minutes the very first
 time. Tap - or + to change it a minute at a time, or hold to change it
 quickly. Start timer goes straight back to the clock, where the corner
 shows the next timer to finish in digits readable across the kitchen, and
 a card beside it the two after that (+N more). The clock shrinks a little
-and the Ekadashi bars move up a row to make room.
+to make room.
 
 Any number can run at once. In the timer screen each one has -1 and +1,
 pause, and cancel (tap twice, so a stray touch can't cancel it).
@@ -102,10 +104,37 @@ applies an update while one is running.
 
 On the wall panel the Jellyclock app does the ringing: the TV's audio
 pauses, the volume goes to at least 80%, and both are put back after
-Stop; it rings on the second even if the clock isn't on screen.
+Stop; it rings on the second even if the clock isn't on screen. Only one
+thing plays at a time: if the TV is played again while a timer rings, the
+ringing stops and that timer starts again for its full length (a 20-minute
+timer rings again 20 minutes later); the top of the clock says so.
 Elsewhere the page beeps itself, which needs one tap on the screen after
 the app opens (a browser rule); starting a timer counts, so it only
 matters after a restart.
+
+
+THE CALENDAR
+------------
+The round calendar button next to the timers opens the month, laid out
+like an Indian wall calendar: the Gujarati lunar months it spans and the
+Vikram Samvat year above the grid (Aso, Kartak, ... with "Adhik" for an
+extra month; the Samvat turns over at Kartak Sud 1), and the first day of
+each lunar month labelled in its square. Every Ekadashi has a fruit (a
+fasting day), countdown (ProgressBar) days are outlined in saffron, Poonam
+and Amavasya show their moons, and other events a dot. The month's events
+are listed on the right. Arrows change the month; Today goes back.
+
+The events come only from events.csv; the lunar months are worked out in
+calendar.js (new moons and the Sun's sidereal position, Lahiri ayanamsa,
+amanta months as in Gujarat). The day a lunar month starts can be a day
+out from a printed panchang right at the boundary.
+
+Tap a day (in the grid or the list) to see the clock screen as it will look
+that day: colours, events, countdown bars and date, with the real time of
+day. Arrows at the left and right of the screen then step a day back or
+forward; they only show while a day is previewed. "Previewing Thu 22 Oct"
+shows at the top meanwhile. Tap Today in the calendar, or leave the screen
+untouched for 30 seconds, to return to today. Nothing is saved.
 
 
 SEARCH AND SAVE SONGS FROM YOUTUBE MUSIC
@@ -161,8 +190,8 @@ OFFLINE AND WI-FI DROPS
   after a reboot.
 - Songs download in 1 MB pieces. If Wi-Fi drops mid-download, only the
   piece in flight is lost and it resumes from there when Wi-Fi returns.
-  The top-left corner shows "Saving songs for offline" while this runs.
-- "Offline" in the top-left corner means the server can't be reached.
+  The top of the screen shows "Saving songs for offline" while this runs.
+- "Offline" at the top of the screen means the server can't be reached.
   The app checks every 2 minutes (every 30 seconds while offline) and
   catches up as soon as it's back.
 - The calendar and song list are re-checked every 30 minutes.
@@ -185,8 +214,8 @@ INSTALLING ON THE TABLET
 ------------------------
 Chrome menu > Add to Home screen > Install. Open it from the home screen
 icon: it runs full screen with no browser bar, with no tap needed. In a
-normal Chrome tab, tap anywhere to go full screen; the faint icon in the
-top-right corner leaves full screen. The screen is kept awake while the
+normal Chrome tab, tap anywhere to go full screen; the faint icon left of
+the calendar button leaves full screen. The screen is kept awake while the
 app is open.
 
 
@@ -222,11 +251,24 @@ small background service:
     on http://localhost:8642, accepted by this app). A tap anywhere pauses
     the countdown; it starts again after a minute untouched. Tiles: Open
     clock, Settings, Wi-Fi, Bluetooth. In the corners:
-      Speaker            the panel maker's speaker / music app
+      Speaker            the speaker volume (the panel's own control; the
+                         maker's Tencent/Baidu music app is switched off)
       Restart panel      Android's power menu (Power off / Restart)
       Refresh Bluetooth  Bluetooth off and on, then the TV is reconnected:
                          for a lagging or stuttering TV link
       Restart clock      closes the clock app completely and reopens it
+  - Watches the TV's audio around the clock. What an app can see: the TV's
+    audio dropping, Bluetooth stopping by itself, and the TV's stream
+    stopping and starting again within a moment. Two drops in 10 minutes, or
+    five stop-starts in 3 minutes, and it restarts Bluetooth like Refresh
+    Bluetooth (at most every 30 minutes, never while a timer rings). If three
+    of those in two hours don't help, it stops and the clock shows "TV sound
+    keeps dropping · restart the panel" (an app can't restart Android
+    itself; Restart panel on the home screen does). Stutter that never
+    makes the stream stop isn't visible to an app; Refresh Bluetooth is
+    still there for that. Long-press the clock for its recent notes.
+  - Every night at 4, with nothing playing and no timer due within half an
+    hour: Bluetooth off and on, and the clock closed and reopened fresh.
   - Bluetooth stays private: the panel is not discoverable, and only approved
     devices stay paired. To add one, open Bluetooth from the home screen
     (Settings' pairing screen makes the panel visible while it is open).
@@ -244,11 +286,15 @@ small background service:
   - Holds a high-performance Wi-Fi lock (no Wi-Fi power saving).
   - Dismisses "Google Play services" / Play Protect / physical keyboard
     notifications.
-  - Intercom, timer alarms and full-screen requests from the page on
-    http://127.0.0.1:8791.
-android/panel-cleanup.sh removes the vendor apps (trackers, LAN remote control)
-and the Wi-Fi password "Share" screen; see its comments. It keeps the maker's
-speaker app, which the Speaker corner opens, unless run with "all".
+  - Intercom, timer alarms, audio health and full-screen requests from the
+    page on http://127.0.0.1:8791.
+The maker's music app (com.youzhuan.music: Tencent X5 + Bugly, Baidu, its own
+cloud) is switched off; Bluetooth audio from the TV doesn't need it:
+  adb shell pm disable-user --user 0 com.youzhuan.music
+  (undo: adb shell pm enable com.youzhuan.music)
+android/panel-cleanup.sh removes the other vendor apps too (LAN remote control,
+AirPlay/DLNA receivers, the updater) and the Wi-Fi password "Share" screen;
+see its comments.
 Build: powershell -File android\build.ps1 (JDK 17 + Android build-tools 34 and
 platform 29; signing key kept in %USERPROFILE%\.clockadashi). Install:
   adb install -r android\out\clockpanel.apk
@@ -261,19 +307,16 @@ platform 29; signing key kept in %USERPROFILE%\.clockadashi). Install:
   adb shell settings put secure accessibility_enabled 1
 (the last two switch on "Jellyclock power menu", which only lets Restart panel
 open Android's power menu; the same switch is in Settings > Accessibility)
-Undo: adb shell cmd package set-home-activity com.youzhuan.musiclauncher/.MainActivity
+Undo: adb shell pm enable com.youzhuan.music, then
+  adb shell cmd package set-home-activity com.youzhuan.musiclauncher/.MainActivity
 android/root/ holds an optional boot script that also switches off the Wi-Fi
 driver's power saving and Bluetooth sleep (needs adb remount; not installed).
 
 
 TESTING AND DIAGNOSTICS
 -----------------------
-- The faint calendar button in the top-left corner previews another date
-  on the screen itself (colours, events, countdown bars): pick a day and
-  the screen shows it with the real time of day; only the date changes.
-  The corner says "Previewing Wed 21 Oct" meanwhile; tap the calendar again, or
-  leave the screen untouched for 30 seconds, to return to today. Nothing is
-  saved.
+- The calendar button previews another date on the screen itself (see THE
+  CALENDAR).
 - Preview any moment by adding ?now= to the address, for example
   clock.nehal.boo/?now=2026-10-21T20:00 shows the red day before
   Pashankusha Ekadashi. The clock runs on from there. Nothing is saved.

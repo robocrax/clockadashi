@@ -21,14 +21,14 @@ if ($LASTEXITCODE) { throw 'aapt2 compile failed' }
 # The clock web app, bundled so the panel serves it with no internet (LocalSite.java).
 # Songs are not bundled: the panel fetches them from clock.nehal.boo when first asked and keeps them.
 $site = (Resolve-Path "$here\..").Path
-$siteFiles = @('index.html', 'style.css', 'app.js', 'player.js', 'intercom.js', 'timers.js', 'sw.js',
+$siteFiles = @('index.html', 'style.css', 'app.js', 'player.js', 'intercom.js', 'timers.js', 'calendar.js', 'sw.js',
   'manifest.json', 'events.csv', 'tracks.json') +
   @(Get-ChildItem "$site\icons", "$site\fonts" -File | ForEach-Object { "$($_.Directory.Name)/$($_.Name)" })
 New-Item -ItemType Directory -Force "$out\native\assets\site\icons", "$out\native\assets\site\fonts" | Out-Null
 foreach ($f in $siteFiles) { Copy-Item "$site\$f" "$out\native\assets\site\$f" }
 
 & "$bt\aapt2.exe" link -o "$out\base.apk" -I $jar --manifest "$here\AndroidManifest.xml" `
-  --java "$out\gen" --min-sdk-version 26 --target-sdk-version 28 --version-code 4 --version-name 1.3 "$out\res.zip"
+  --java "$out\gen" --min-sdk-version 26 --target-sdk-version 28 --version-code 5 --version-name 1.4 "$out\res.zip"
 if ($LASTEXITCODE) { throw 'aapt2 link failed' }
 
 $srcs = @(Get-ChildItem "$here\src", "$out\gen" -Recurse -Filter *.java | ForEach-Object FullName)

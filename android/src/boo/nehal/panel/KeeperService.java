@@ -25,6 +25,7 @@ import android.os.Handler;
 import android.os.IBinder;
 import android.os.Looper;
 import android.os.PowerManager;
+import android.text.TextUtils;
 import android.util.Log;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -36,8 +37,13 @@ import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
+import java.text.SimpleDateFormat;
+import java.util.ArrayDeque;
+import java.util.Calendar;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
@@ -49,12 +55,16 @@ import org.json.JSONObject;
  *  - sets the amplifier's hardware volume the moment Android's media volume changes (Amp)
  *  - reconnects the TV as a Bluetooth audio source whenever it isn't connected
  *  - turns Bluetooth back on if something leaves it off
+ *  - watches the TV's audio around the clock and restarts Bluetooth when it keeps dropping;
+ *    a fresh start of Bluetooth and the clock every night at 4 (see "Audio health")
  *  - holds a high-performance Wi-Fi lock (no Wi-Fi power saving)
  *  - intercom on http://127.0.0.1:8791 for the clock page:
  *      GET  /ping             -> {"ok":true}
  *      GET  /open-clock       reopen the clock as the full-screen app (page idle in a normal tab)
- *      POST /alarm/schedule   {"timers":[{"id","end"}]}: the kitchen timers' end times; rings when
- *                             one passes (TV + music paused, volume up) until it leaves the list
+ *      POST /alarm/schedule   {"timers":[{"id","min","end"}]}: the kitchen timers' end times; rings
+ *                             when one passes (TV + music paused, volume up) until it leaves the list
+ *      GET  /alarm/status     timers restarted because the TV was played while they rang
+ *      GET  /health           the TV link's recent trouble, and advice for the page to show
  *      GET  /intercom/begin   pause TV + music (temporary audio focus) while recording
  *      POST /intercom/play    body = recorded audio; plays it at full volume, then restores
  *                             the volume and hands audio back to the TV / music
@@ -115,7 +125,9 @@ public class KeeperService extends Service {
     tvFilter.addAction(A2DP_SINK_STATE_CHANGED);
     registerReceiver(tvEvents, tvFilter, null, main);
     registerReceiver(bondChanged, new IntentFilter(BluetoothDevice.ACTION_BOND_STATE_CHANGED), null, main);
+    registerReceiver(adapterState, new IntentFilter(BluetoothAdapter.ACTION_STATE_CHANGED), null, main);
     main.post(loop);
+    main.post(streamWatch);
     startServer();
     new LocalSite(this).start();
     new SongServer(this).start();
@@ -143,6 +155,8 @@ public class KeeperService extends Service {
         Log.i(TAG, "TV audio dropped: retrying every " + RETRY_CONNECT_FAST_MS / 1000 + " s for a while");
         tvLastSeen = System.currentTimeMillis();
         lastConnectTry = 0;
+        // our own Bluetooth restart, or the TV being switched off while silent, isn't trouble
+        if (tvLastSeen > refreshUntil && wasStreamingLately()) trouble(drops, DROP_WINDOW_MS, DROP_LIMIT, "TV audio dropped");
       }
     }
   };
@@ -256,6 +270,149 @@ public class KeeperService extends Service {
     }, 2000);
   }
 
+  /* ---- Audio health, around the clock ------------------------------------------------
+     What an ordinary app can see of the TV link: the TV's audio dropping, Bluetooth stopping
+     by itself (its process crashing), and the TV's stream stopping and starting again within
+     a moment, over and over. Enough of these close together and Bluetooth is restarted, as
+     "Refresh Bluetooth" does, at most every half hour. If three of those in two hours don't
+     help, it stops trying and the clock page suggests restarting the panel (an app can't
+     restart Android). Every night at 4, with nothing playing and no timer about to ring,
+     Bluetooth and the clock get a fresh start. */
+  static final long DROP_WINDOW_MS = 10 * 60000;  // 2 drops in 10 minutes: unstable
+  static final int DROP_LIMIT = 2;
+  static final long BLIP_WINDOW_MS = 3 * 60000;   // 5 stream stop-starts in 3 minutes: unstable
+  static final int BLIP_LIMIT = 5;
+  static final long BLIP_GAP_MS = 3000;           // stopped and playing again within this: a blip
+  static final long AUTO_REFRESH_GAP_MS = 30 * 60000;
+  static final long GIVE_UP_WINDOW_MS = 2 * 3600_000L;
+  static final int GIVE_UP_AFTER = 3;
+  static final int NIGHTLY_HOUR = 4;
+
+  private final ArrayDeque<Long> drops = new ArrayDeque<>(), blips = new ArrayDeque<>(), autoRefreshes = new ArrayDeque<>();
+  private final ArrayDeque<String> healthLog = new ArrayDeque<>();
+  private boolean streaming;
+  private long streamStoppedAt;
+  private Method isA2dpPlaying;
+  private boolean lookedForIsPlaying;
+
+  private static int recent(ArrayDeque<Long> q, long window, long now) {
+    while (!q.isEmpty() && now - q.peekFirst() > window) q.removeFirst();
+    return q.size();
+  }
+
+  private void note(String what) {
+    healthLog.addLast(new SimpleDateFormat("d MMM HH:mm", Locale.ROOT).format(new Date()) + "  " + what);
+    while (healthLog.size() > 12) healthLog.removeFirst();
+    Log.i(TAG, "audio health: " + what);
+  }
+
+  private void trouble(ArrayDeque<Long> q, long window, int limit, String what) {
+    long now = System.currentTimeMillis();
+    q.addLast(now);
+    int n = recent(q, window, now);
+    note(what + " (" + n + " in " + window / 60000 + " min)");
+    if (n < limit || now < refreshUntil || alarmTrack != null || player != null) return;
+    if (!autoRefreshes.isEmpty() && now - autoRefreshes.peekLast() < AUTO_REFRESH_GAP_MS) return;
+    if (recent(autoRefreshes, GIVE_UP_WINDOW_MS, now) >= GIVE_UP_AFTER) return;  // not helping: see advice()
+    autoRefreshes.addLast(now);
+    drops.clear();
+    blips.clear();
+    note("TV audio unstable: restarting Bluetooth");
+    refreshBluetooth();
+  }
+
+  /** Shown on the clock page when restarting Bluetooth by itself hasn't helped. */
+  private String advice() {
+    if (recent(autoRefreshes, GIVE_UP_WINDOW_MS, System.currentTimeMillis()) < GIVE_UP_AFTER) return "";
+    return "TV sound keeps dropping · restart the panel (Home, top-right)";
+  }
+
+  private boolean wasStreamingLately() {
+    return isA2dpPlaying == null || streaming || System.currentTimeMillis() - streamStoppedAt < 60000;
+  }
+
+  /** Whether the TV is streaming sound to us right now (false if this Android can't tell). */
+  private boolean tvPlaying() {
+    if (sink == null) return false;
+    List<BluetoothDevice> on = sink.getConnectedDevices();
+    if (on.isEmpty()) return false;
+    if (!lookedForIsPlaying) {
+      lookedForIsPlaying = true;
+      try { isA2dpPlaying = sink.getClass().getMethod("isA2dpPlaying", BluetoothDevice.class); }
+      catch (Exception e) { Log.w(TAG, "can't tell whether the TV is streaming: " + e); }
+    }
+    if (isA2dpPlaying == null) return false;
+    try {
+      for (BluetoothDevice d : on) if (Boolean.TRUE.equals(isA2dpPlaying.invoke(sink, d))) return true;
+    } catch (Exception ignored) {}
+    return false;
+  }
+
+  private final Runnable streamWatch = new Runnable() {
+    @Override public void run() {
+      try {
+        boolean on = tvPlaying();
+        long now = System.currentTimeMillis();
+        boolean ours = alarmTrack != null || player != null || now < refreshUntil;  // we paused it
+        if (on && !streaming && !ours && streamStoppedAt > 0 && now - streamStoppedAt < BLIP_GAP_MS)
+          trouble(blips, BLIP_WINDOW_MS, BLIP_LIMIT, "TV stream stopped and started again");
+        if (!on && streaming) streamStoppedAt = now;
+        streaming = on;
+      } catch (Exception e) {
+        Log.w(TAG, "stream watch", e);
+      }
+      main.postDelayed(this, 1000);
+    }
+  };
+
+  private final BroadcastReceiver adapterState = new BroadcastReceiver() {
+    @Override public void onReceive(Context c, Intent i) {
+      if (i.getIntExtra(BluetoothAdapter.EXTRA_STATE, -1) == BluetoothAdapter.STATE_TURNING_OFF
+          && System.currentTimeMillis() > refreshUntil) {
+        trouble(drops, DROP_WINDOW_MS, DROP_LIMIT, "Bluetooth stopped by itself");
+      }
+    }
+  };
+
+  /** 4 in the morning, once a day: Bluetooth off and on, and the clock reopened fresh. */
+  private void nightly() {
+    Calendar c = Calendar.getInstance();
+    if (c.get(Calendar.HOUR_OF_DAY) != NIGHTLY_HOUR) return;
+    String day = c.get(Calendar.YEAR) + "-" + c.get(Calendar.DAY_OF_YEAR);
+    SharedPreferences sp = getSharedPreferences(HomeActivity.PREFS, MODE_PRIVATE);
+    if (day.equals(sp.getString("nightly", ""))) return;
+    long now = System.currentTimeMillis();
+    if (streaming || am.isMusicActive() || alarmTrack != null || player != null) return;  // try again shortly
+    for (long end : timerEnds.values()) if (end - now < 30 * 60000L) return;
+    sp.edit().putString("nightly", day).apply();
+    note("nightly fresh start: Bluetooth and the clock");
+    refreshBluetooth();
+    try {
+      startActivity(new Intent(this, HomeActivity.class).setAction(HomeActivity.ACTION_FRESH_START)
+          .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
+    } catch (Exception e) {
+      Log.w(TAG, "nightly clock restart", e);
+    }
+  }
+
+  private String healthJson() throws Exception {
+    long now = System.currentTimeMillis();
+    boolean connected = sink != null && !sink.getConnectedDevices().isEmpty();
+    String tv = connected ? (streaming ? "TV connected and playing" : "TV connected") : "TV not connected";
+    StringBuilder s = new StringBuilder(tv).append("; ")
+        .append(recent(drops, DROP_WINDOW_MS, now)).append(" drops in 10 min, ")
+        .append(recent(blips, BLIP_WINDOW_MS, now)).append(" stream restarts in 3 min");
+    if (isA2dpPlaying == null && lookedForIsPlaying) s.append(" (stream state not visible on this Android)");
+    if (!healthLog.isEmpty()) s.append("; recent: ").append(TextUtils.join(" | ", healthLog));
+    JSONObject j = new JSONObject();
+    j.put("ok", true);
+    j.put("connected", connected);
+    j.put("playing", streaming);
+    j.put("advice", advice());
+    j.put("summary", s.toString());
+    return j.toString();
+  }
+
   /* ---- Amplifier volume follows Android's media volume immediately ------- */
   private final BroadcastReceiver volumeChanged = new BroadcastReceiver() {
     @Override public void onReceive(Context c, Intent i) {
@@ -285,6 +442,7 @@ public class KeeperService extends Service {
     try { unregisterReceiver(volumeChanged); } catch (IllegalArgumentException notRegistered) {}
     try { unregisterReceiver(tvEvents); } catch (IllegalArgumentException notRegistered) {}
     try { unregisterReceiver(bondChanged); } catch (IllegalArgumentException notRegistered) {}
+    try { unregisterReceiver(adapterState); } catch (IllegalArgumentException notRegistered) {}
     try { if (server != null) server.close(); } catch (Exception ignored) {}
     endIntercom();
     if (alarmTrack != null) stopRinging();
@@ -308,6 +466,7 @@ public class KeeperService extends Service {
       try { updateFrontApp(); lockBluetooth(); } catch (Exception e) { Log.w(TAG, "bluetooth lock", e); }
       if (++loops % 6 == 0) {
         try { returnToClockIfLeftOpen(); } catch (Exception e) { Log.w(TAG, "return to clock", e); }
+        try { nightly(); } catch (Exception e) { Log.w(TAG, "nightly", e); }
       }
       if (!wifiLock.isHeld()) wifiLock.acquire();
       main.postDelayed(this, LOOP_MS);
@@ -423,20 +582,37 @@ public class KeeperService extends Service {
     restoredVolume = -1;
   };
 
-  /* ---- Kitchen timers: ring when one of the page's timers ends -------------- */
+  /* ---- Kitchen timers: ring when one of the page's timers ends --------------
+     Only one thing plays at a time: the ringing pauses the TV and the music, and if the
+     TV is played again while a timer rings (or anything else takes the speaker), the
+     ringing stops and that timer starts again for its full length. The page hears about
+     it from /alarm/status. */
   static final int ALARM_VOLUME_PERCENT = 80;   // at least this loud while ringing
   static final long ALARM_MAX_MS = 10 * 60000;  // stop ringing by itself after 10 minutes (timers.js RING_MIN)
+  static final long OTHER_AUDIO_GRACE_MS = 2500; // the TV takes a moment to pause when the ringing starts
   private final Map<String, Long> timerEnds = new HashMap<>();
-  private final Set<String> timedOut = new HashSet<>();  // rang for 3 minutes unanswered: don't restart
+  private final Map<String, Integer> timerMinutes = new HashMap<>();
+  private final Map<String, Long> postponed = new HashMap<>();  // restarted for the TV: new end, until the page has it
+  private final Set<String> timedOut = new HashSet<>();  // rang for 10 minutes unanswered: don't restart
   private AudioTrack alarmTrack;
   private AudioFocusRequest alarmFocus;
-  private int alarmSavedVolume = -1;
+  private int alarmSavedVolume = -1, alarmSavedAlarmVolume = -1;
   private long ringingSince;
+  private boolean quietSinceRinging;  // the TV and music fell silent after the ringing started
 
-  /** The page sends every running timer's end time whenever anything changes. */
-  private void scheduleTimers(Map<String, Long> ends) {
+  /** The page sends every running timer's end time and length whenever anything changes. */
+  private void scheduleTimers(Map<String, Long> ends, Map<String, Integer> minutes) {
+    // a timer restarted for the TV keeps its new end until the page sends that end back
+    postponed.keySet().retainAll(ends.keySet());
+    for (Map.Entry<String, Long> p : new HashMap<>(postponed).entrySet()) {
+      long sent = ends.get(p.getKey());
+      if (Math.abs(sent - p.getValue()) < 2000) postponed.remove(p.getKey());
+      else ends.put(p.getKey(), p.getValue());
+    }
     timerEnds.clear();
     timerEnds.putAll(ends);
+    timerMinutes.clear();
+    timerMinutes.putAll(minutes);
     timedOut.retainAll(ends.keySet());
     checkTimers();
   }
@@ -454,25 +630,56 @@ public class KeeperService extends Service {
     }
     if (due && alarmTrack == null) startRinging();
     if (!due && alarmTrack != null) stopRinging();
+    if (alarmTrack != null) {
+      // the ringing is the only stream on STREAM_ALARM, so music being active means the TV or Chrome
+      boolean other = am.isMusicActive() || streaming;
+      if (!other) quietSinceRinging = true;
+      else if (quietSinceRinging && now - ringingSince > OTHER_AUDIO_GRACE_MS) { otherAudioStarted("the TV is playing"); return; }
+    }
     if (alarmTrack != null && now - ringingSince > ALARM_MAX_MS) {
       for (Map.Entry<String, Long> e : timerEnds.entrySet()) if (e.getValue() <= now) timedOut.add(e.getKey());
       stopRinging();
     }
-    long wait = alarmTrack != null ? 1000 : next - now;
+    long wait = alarmTrack != null ? 500 : next - now;
     if (wait < Long.MAX_VALUE / 2) main.postDelayed(timerCheck, Math.max(50, Math.min(wait, 60000)));
+  }
+
+  /** Something else took the speaker while a timer rang: stop, and restart the ringing timers in full. */
+  private void otherAudioStarted(String why) {
+    if (alarmTrack == null) return;
+    long now = System.currentTimeMillis();
+    for (Map.Entry<String, Long> e : timerEnds.entrySet()) {
+      if (e.getValue() > now || timedOut.contains(e.getKey())) continue;
+      Integer min = timerMinutes.get(e.getKey());
+      long end = now + Math.max(1, min == null ? 1 : min) * 60000L;
+      e.setValue(end);
+      postponed.put(e.getKey(), end);
+      Log.i(TAG, why + ": stopped ringing, timer " + e.getKey() + " restarted for " + (min == null ? 1 : min) + " min");
+    }
+    stopRinging();
+    checkTimers();
   }
 
   private void startRinging() {
     Log.i(TAG, "timer done: ringing");
     ringingSince = System.currentTimeMillis();
+    quietSinceRinging = false;
+    // USAGE_ALARM: the chime is on its own stream, so music still playing is somebody else
     AudioAttributes attrs = new AudioAttributes.Builder()
-        .setUsage(AudioAttributes.USAGE_MEDIA).setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION).build();
+        .setUsage(AudioAttributes.USAGE_ALARM).setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION).build();
     alarmFocus = new AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN_TRANSIENT)  // TV + music pause
-        .setAudioAttributes(attrs).setOnAudioFocusChangeListener(c -> {}).build();
+        .setAudioAttributes(attrs).setOnAudioFocusChangeListener(c -> {
+          if (c == AudioManager.AUDIOFOCUS_LOSS || c == AudioManager.AUDIOFOCUS_LOSS_TRANSIENT) {
+            main.post(() -> otherAudioStarted("audio taken by another app"));
+          }
+        }, main).build();
     am.requestAudioFocus(alarmFocus);
+    // the amplifier follows the media volume, so that goes up too; the chime plays at full alarm volume
     int max = am.getStreamMaxVolume(AudioManager.STREAM_MUSIC), cur = am.getStreamVolume(AudioManager.STREAM_MUSIC);
     alarmSavedVolume = cur;
     am.setStreamVolume(AudioManager.STREAM_MUSIC, Math.max(cur, max * ALARM_VOLUME_PERCENT / 100), 0);
+    alarmSavedAlarmVolume = am.getStreamVolume(AudioManager.STREAM_ALARM);
+    am.setStreamVolume(AudioManager.STREAM_ALARM, am.getStreamMaxVolume(AudioManager.STREAM_ALARM), 0);
     short[] pcm = chime();
     alarmTrack = new AudioTrack.Builder()
         .setAudioAttributes(attrs)
@@ -494,7 +701,17 @@ public class KeeperService extends Service {
       alarmTrack = null;
     }
     if (alarmSavedVolume >= 0) { am.setStreamVolume(AudioManager.STREAM_MUSIC, alarmSavedVolume, 0); alarmSavedVolume = -1; }
+    if (alarmSavedAlarmVolume >= 0) {
+      am.setStreamVolume(AudioManager.STREAM_ALARM, alarmSavedAlarmVolume, 0);
+      alarmSavedAlarmVolume = -1;
+    }
     if (alarmFocus != null) { am.abandonAudioFocusRequest(alarmFocus); alarmFocus = null; }
+  }
+
+  private String alarmJson() throws Exception {
+    JSONArray moved = new JSONArray();
+    for (Map.Entry<String, Long> p : postponed.entrySet()) moved.put(new JSONObject().put("id", p.getKey()).put("end", p.getValue()));
+    return new JSONObject().put("ok", true).put("ringing", alarmTrack != null).put("postponed", moved).toString();
   }
 
   static final int CHIME_RATE = 44100;
@@ -580,12 +797,28 @@ public class KeeperService extends Service {
           if (length <= 0 || length > 65536) { reply(out, 400, origin, "{\"error\":\"no timers\"}"); break; }
           JSONArray list = new JSONObject(new String(readBody(in, length), StandardCharsets.UTF_8)).getJSONArray("timers");
           Map<String, Long> ends = new HashMap<>();
+          Map<String, Integer> minutes = new HashMap<>();
           for (int i = 0; i < list.length(); i++) {
             JSONObject t = list.getJSONObject(i);
             ends.put(t.getString("id"), t.getLong("end"));
+            minutes.put(t.getString("id"), t.optInt("min", 1));
           }
-          main.post(() -> scheduleTimers(ends));
+          main.post(() -> scheduleTimers(ends, minutes));
           reply(out, 200, origin, "{\"ok\":true,\"timers\":" + ends.size() + "}");
+          break;
+        }
+        case "/alarm/status":
+        case "/health": {
+          String p = path;
+          String[] json = new String[1];
+          java.util.concurrent.CountDownLatch done = new java.util.concurrent.CountDownLatch(1);
+          main.post(() -> {  // the timer and health state belong to the main thread
+            try { json[0] = p.equals("/health") ? healthJson() : alarmJson(); }
+            catch (Exception e) { Log.w(TAG, p, e); }
+            done.countDown();
+          });
+          done.await(3, java.util.concurrent.TimeUnit.SECONDS);
+          reply(out, json[0] == null ? 500 : 200, origin, json[0] == null ? "{\"error\":\"busy\"}" : json[0]);
           break;
         }
         case "/intercom/begin":

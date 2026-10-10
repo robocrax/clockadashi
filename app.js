@@ -7,7 +7,7 @@
   'use strict';
 
   /* ---- Settings ---------------------------------------------------------- */
-  var VERSION = '3.8.0';
+  var VERSION = '3.9.0';
   var COUNTDOWN_DAYS = 8;      // a ProgressBar event gets its bar this many days ahead
   var APPROACH_DAYS = 4;       // purple tint from this many days out, until the red day before
   var PAD_HOURS = true;        // 08:05 rather than 8:05, so the clock never changes width
@@ -53,6 +53,9 @@
     search: 'M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z',
     add: 'M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z',
     calendar: 'M19 4h-1V2h-2v2H8V2H6v2H5c-1.11 0-1.99.9-1.99 2L3 20c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V10h14v10zm0-12H5V6h14v2zM7 12h5v5H7z',
+    back: 'M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z',
+    forward: 'M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z',
+    speaker: 'M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02z',
     mic: 'M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5.3-3c0 3-2.54 5.1-5.3 5.1S6.7 14 6.7 11H5c0 3.41 2.72 6.23 6 6.72V21h2v-3.28c3.28-.48 6-3.3 6-6.72h-1.7z',
     minus: 'M19 13H5v-2h14v2z',
     remove: 'M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z',
@@ -120,7 +123,7 @@
   /* ---- Time ---------------------------------------------------------------
      ?now=2026-10-21T20:00 previews any moment (the clock runs on from there),
      handy for checking the red and saffron days without editing events.csv.
-     The calendar button (top-left) previews another date on the screen itself:
+     The calendar button (top-right) previews another date on the screen itself:
      only the date changes, the time of day stays real. */
   var offsetMs = 0, previewDay = null;  // previewDay: { y, m (0-11), d }
   (function () {
@@ -320,9 +323,6 @@
   /* ---- Sizing: the clock takes every pixel the other rows leave it ---------- */
   function fitTop() {
     var top = el.top;
-    // keep the centred text clear of the corner status and full-screen button
-    var side = Math.max(56, statusReserve);
-    top.style.paddingLeft = top.style.paddingRight = side + 'px';
     if (!top.firstChild) { top.style.fontSize = ''; return; }
     var w = window.innerWidth, h = window.innerHeight, wide = w >= h;
     var maxH = h * (wide ? 0.25 : 0.2);
@@ -378,8 +378,7 @@
     for (var k = 1; k < ringPaths.length; k++) ringPaths[k].style.strokeDashoffset = offset;
   }
 
-  // A countdown label shrinks a little rather than cut off "...on Thursday" when the
-  // timer button takes some of the row.
+  // A countdown label shrinks a little rather than cut off "...on Thursday".
   function fitBars() {
     var labels = el.bars.querySelectorAll('.cd-label');
     for (var i = 0; i < labels.length; i++) {
@@ -402,9 +401,9 @@
   }
   CK.layout = queueLayout;
 
-  /* ---- Corner status: offline, first calendar load, songs being saved ------ */
+  /* ---- Status, top centre: offline, first calendar load, songs being saved -- */
   var statuses = {};
-  var STATUS_ORDER = ['preview', 'offline', 'calendar', 'music'];
+  var STATUS_ORDER = ['preview', 'timer', 'audio', 'offline', 'calendar', 'music'];
   CK.setStatus = function (key, text, icon) {
     var next = text ? { text: text, icon: icon || '' } : null;
     var prev = statuses[key];
@@ -412,9 +411,6 @@
     statuses[key] = next;
     if (el.status) renderStatus();
   };
-  // Room kept beside today's events for the status. It only grows while the status
-  // shows, so a ticking download percentage can't make the clock jitter in size.
-  var statusReserve = 0;
   function renderStatus() {
     var s = null;
     for (var i = 0; i < STATUS_ORDER.length && !s; i++) s = statuses[STATUS_ORDER[i]];
@@ -424,8 +420,6 @@
       el.statusIcon.hidden = !s.icon;
       if (s.icon) setIcon(el.statusIcon, s.icon);
     }
-    var reserve = s ? Math.max(statusReserve, el.status.offsetLeft + el.status.offsetWidth + 12) : 0;
-    if (reserve !== statusReserve) { statusReserve = reserve; queueLayout(); }
   }
 
   /* ---- Network: navigator.onLine lies on captive or dead Wi-Fi, so we probe -- */
@@ -490,7 +484,10 @@
     shown.top = shown.bars = null;
     CK.setStatus('calendar', '');
     renderMinute(now());
+    emit('events', cal);
   }
+  CK.events = function () { return cal; };  // { byDay: { dayIndex: [events] }, marked }
+  CK.dayIndex = dayIndex;
 
   function applyTracks(text) {
     var list = JSON.parse(text);
@@ -619,48 +616,66 @@
       .then(function () { log('screen', 'idle in a browser tab: reopened as the full-screen app'); }, noop);
   }
 
-  /* ---- Date preview: the calendar button, top-left --------------------------
-     Shows the screen as it will look on another day (colours, events, countdown
-     bars, date). Only the date changes, never the time. Nothing is saved: a
-     reload shows today, and so does PREVIEW_IDLE_SEC untouched. */
+  /* ---- Date preview: the calendar button, top-right --------------------------
+     The button opens the month (calendar.js); tapping a day there shows the
+     screen as it will look that day (colours, events, countdown bars, date).
+     While previewing, arrows at the screen's sides step a day back or forward.
+     Only the date changes, never the time. Nothing is saved: a reload shows
+     today, and so does PREVIEW_IDLE_SEC untouched. */
   var PREVIEW_IDLE_SEC = 30;
   function isoDay(d) { return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate()); }
   function setPreview(day) {
+    if (day) {  // normalise: 32 October is 1 November
+      var n = new Date(day.y, day.m, day.d);
+      day = { y: n.getFullYear(), m: n.getMonth(), d: n.getDate() };
+    }
     var today = new Date();
     if (day && day.y === today.getFullYear() && day.m === today.getMonth() && day.d === today.getDate()) day = null;
+    if (!day && !previewDay) return;
     previewDay = day;
     if (day) {
-      offsetMs = 0;            // the button wins over ?now=
-      lastTouch = Date.now();  // taps in the date picker don't reach the page: count from now
+      offsetMs = 0;            // the calendar wins over ?now=
+      lastTouch = Date.now();
     }
     var d = now();
-    // kept short: today's events are centred clear of the status, so a long one squeezes them
     CK.setStatus('preview', day ? 'Previewing ' + WEEKDAYS[d.getDay()].slice(0, 3) + ' ' + d.getDate() + ' ' +
       MONTHS[d.getMonth()].slice(0, 3) : '', 'calendar');
     el.calBtn.classList.toggle('is-on', !!day);
-    el.calBtn.setAttribute('aria-label', day ? 'Back to today' : 'Preview another date');
+    el.dayPrev.hidden = el.dayNext.hidden = !day;
+    if (day) {
+      el.dayPrev.setAttribute('aria-label', 'Preview ' + dayName(-1));
+      el.dayNext.setAttribute('aria-label', 'Preview ' + dayName(1));
+    }
     log('preview', day ? 'showing ' + isoDay(d) : 'back to today');
     renderMinute(d);
+    emit('preview', day);
   }
-  function pickPreviewDate() {
-    if (previewDay) { setPreview(null); return; }  // a second tap ends the preview
-    var input = el.calInput, today = new Date();
-    input.min = isoDay(today);
-    input.max = isoDay(new Date(today.getFullYear() + 2, today.getMonth(), today.getDate()));
-    input.value = isoDay(today);
-    try {
-      if (input.showPicker) input.showPicker();
-      else input.click();
-    } catch (e) {
-      input.focus();
-    }
+  function dayName(step) {
+    var d = now();
+    d = new Date(d.getFullYear(), d.getMonth(), d.getDate() + step);
+    return WEEKDAYS[d.getDay()] + ' ' + d.getDate() + ' ' + MONTHS[d.getMonth()];
   }
-  function previewPicked() {
-    var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(el.calInput.value);
-    if (m) setPreview({ y: +m[1], m: +m[2] - 1, d: +m[3] });
+  function stepPreview(step) {
+    var d = now();
+    setPreview({ y: d.getFullYear(), m: d.getMonth(), d: d.getDate() + step });
   }
+  CK.preview = {
+    get: function () { return previewDay; },
+    set: setPreview
+  };
   function endPreviewWhenIdle() {
     if (previewDay && Date.now() - lastTouch > PREVIEW_IDLE_SEC * 1000) setPreview(null);
+  }
+
+  /* ---- Audio health, from the panel helper app: a note here when the TV's sound
+     keeps dropping even after the helper has restarted Bluetooth by itself. ----- */
+  var audioHealth = null;
+  function checkAudioHealth() {
+    fetchWithin(PANEL_HELPER + '/health', { cache: 'no-store' }, 5000, function (r) { return r.json(); })
+      .then(function (j) {
+        audioHealth = j;
+        CK.setStatus('audio', j && j.advice ? j.advice : '', 'speaker');
+      }, function () { audioHealth = null; CK.setStatus('audio', ''); });
   }
 
   /* ---- Keep the screen on -------------------------------------------------- */
@@ -697,6 +712,7 @@
     ];
     if (CK.player) lines.push(CK.player.describe());
     if (CK.timers) lines.push(CK.timers.describe());
+    if (audioHealth && audioHealth.summary) lines.push('TV audio (panel helper): ' + audioHealth.summary);
     el.diagText.textContent = lines.join('\n');
     el.diag.hidden = false;
 
@@ -718,8 +734,8 @@
   var lastTouch = Date.now();
 
   function boot() {
-    ['screen', 'top', 'clockArea', 'clockBlock', 'time', 'minuteRing', 'hh', 'mm', 'date', 'bars', 'status', 'statusIcon',
-      'calBtn', 'calInput',
+    ['screen', 'head', 'top', 'clockArea', 'clockBlock', 'time', 'minuteRing', 'hh', 'mm', 'date', 'bars', 'status',
+      'statusIcon', 'calBtn', 'dayPrev', 'dayNext',
       'statusText', 'fsBtn', 'diag', 'diagText', 'diagClose', 'diagClear'].forEach(function (id) { el[id] = $(id); });
     Array.prototype.forEach.call(document.querySelectorAll('[data-icon]'), function (node) {
       setIcon(node, node.getAttribute('data-icon'));
@@ -745,7 +761,6 @@
     if ('ResizeObserver' in window) {
       var watcher = new ResizeObserver(queueLayout);
       watcher.observe(el.clockArea);
-      watcher.observe(el.bars);  // narrows when the timer button shows a countdown
     }
 
     ['pointerdown', 'keydown', 'wheel'].forEach(function (t) {
@@ -756,9 +771,12 @@
       enterFullscreen();
     });
     el.fsBtn.addEventListener('click', function () { if (fsElement()) exitFullscreen(); else enterFullscreen(); });
-    el.calBtn.addEventListener('click', pickPreviewDate);
-    el.calInput.addEventListener('change', previewPicked);
+    el.calBtn.addEventListener('click', function () { if (CK.calendar) CK.calendar.open(); });
+    el.dayPrev.addEventListener('click', function () { stepPreview(-1); });
+    el.dayNext.addEventListener('click', function () { stepPreview(1); });
     setInterval(endPreviewWhenIdle, 5000);
+    checkAudioHealth();
+    setInterval(checkAudioHealth, 5 * 60000);
     var fsSupported = !!(document.documentElement.requestFullscreen || document.documentElement.webkitRequestFullscreen);
     el.fsBtn.hidden = !fsSupported || displayMode() === 'fullscreen';
     document.addEventListener('fullscreenchange', renderFsButton);

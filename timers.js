@@ -1,6 +1,6 @@
 /* =========================================================================
    Clockadashi — kitchen timers.
-   The "Timer" button in the bottom-left corner opens them; several can run at
+   The "Timer" button in the top-right corner opens them; several can run at
    once. While they run, the corner shows the next one to finish in digits
    readable across the kitchen, and a card beside it the two after that.
    A new timer starts at the length of the last one started (20 minutes the
@@ -8,8 +8,10 @@
    screen turns blue until Stop is tapped, with any music paused meanwhile.
    On the wall panel the helper app (android/, http://127.0.0.1:8791) does
    the ringing: TV audio paused, volume up, on time even when this page is in
-   the background. Elsewhere the page beeps itself. Timers are saved, so a
-   reload or restart keeps them.
+   the background. If the TV is played again while a timer rings, the helper
+   stops the ringing and the timer starts again for its full length (only one
+   thing plays at a time). Elsewhere the page beeps itself. Timers are saved,
+   so a reload or restart keeps them.
    ========================================================================= */
 (function () {
   'use strict';
@@ -88,7 +90,7 @@
   function syncHelper() {
     clearTimeout(helperRetry);
     var list = timers.filter(function (t) { return t.state !== 'paused'; }).map(function (t) {
-      return { id: t.id, label: 'Timer ' + t.n, end: t.state === 'ringing' ? t.rangAt : t.endsAt };
+      return { id: t.id, label: 'Timer ' + t.n, min: t.set, end: t.state === 'ringing' ? t.rangAt : t.endsAt };
     });
     CK.fetchWithin(HELPER + '/alarm/schedule', { method: 'POST', cache: 'no-store',
       headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ now: Date.now(), timers: list }) }, 5000)
@@ -104,6 +106,37 @@
         updateSound();
         if (timers.length) helperRetry = setTimeout(syncHelper, 60000);
       });
+  }
+
+  /* While a timer rings, ask the helper every couple of seconds whether the TV took
+     the speaker back: it then stops ringing and restarts the timer for its full length
+     ("postponed"), and the page follows. */
+  var lastAsk = 0, postponedNote = 0;
+  function askHelper() {
+    if (!helperOk || !ringing().length || Date.now() - lastAsk < 1800) return;
+    lastAsk = Date.now();
+    CK.fetchWithin(HELPER + '/alarm/status', { cache: 'no-store' }, 4000, function (r) { return r.json(); })
+      .then(function (j) {
+        var moved = [];
+        (j && j.postponed || []).forEach(function (p) {
+          var t = byId(p.id);
+          if (!t || t.state !== 'ringing' || !(p.end > Date.now())) return;
+          t.state = 'running';
+          t.endsAt = p.end;
+          t.total = p.end - Date.now();
+          t.rangAt = 0;
+          moved.push(t);
+        });
+        if (!moved.length) return;
+        musicPaused = false;  // the TV has the speaker now: the music stays paused
+        moved.forEach(function (t) { log('timer', 'TV playing: Timer ' + t.n + ' restarted for ' + length(t.set)); });
+        CK.setStatus('timer', (moved.length === 1 ? 'Timer ' + moved[0].n + ' restarted' : moved.length + ' timers restarted') +
+          ' · rings at ' + at(moved[0].endsAt), 'timer');
+        clearTimeout(postponedNote);
+        postponedNote = setTimeout(function () { CK.setStatus('timer', ''); }, 120000);
+        save();
+        check();
+      }, function () {});
   }
 
   /* ---- Sound (only without the helper) -----------------------------------------
@@ -521,7 +554,7 @@
     if (isOpen) { historyPushed = false; closePanel(true); }
   });
   document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && isOpen) closePanel(false); });
-  CK.on('tick', function () { check(); if (isOpen) headerClock(); });
+  CK.on('tick', function () { check(); askHelper(); if (isOpen) headerClock(); });
 
   CK.timers = {
     busy: function () { return timers.length > 0 || isOpen; },  // no app-update reloads meanwhile
