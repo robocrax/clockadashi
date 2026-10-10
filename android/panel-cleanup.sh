@@ -13,9 +13,14 @@
 #    com.youzhuan.localupdate      firmware updater with root access
 #    com.youzhuan.musiclauncher    the old home screen (needs com.youzhuan.music)
 #    com.youzhuan.volume           the on-screen volume overlay
-# The Clock Panel helper app already sets the amplifier volume, so nothing here is needed for sound.
-for p in com.youzhuan.music com.youzhuan.music.remote.controlserver com.youzhuan.music.dlnamusicservice \
-         com.youzhuan.music.airplay com.youzhuan.localupdate com.youzhuan.musiclauncher com.youzhuan.volume; do
+# The Jellyclock helper app already sets the amplifier volume, so nothing here is needed for sound.
+# The home screen's Speaker button opens com.youzhuan.music, so that app and its old home screen are kept
+# unless this script is run with "all":  adb shell sh /data/local/tmp/panel-cleanup.sh all
+# (the Speaker button then has nothing to open; not tried: the speaker app without the other vendor apps)
+apps="com.youzhuan.music.remote.controlserver com.youzhuan.music.dlnamusicservice com.youzhuan.music.airplay
+      com.youzhuan.localupdate com.youzhuan.volume"
+[ "$1" = all ] && apps="$apps com.youzhuan.music com.youzhuan.musiclauncher"
+for p in $apps; do
   am force-stop $p
   pm uninstall -k --user 0 $p
 done

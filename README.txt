@@ -19,7 +19,7 @@ pushing to main deploys it, and the tablet picks the change up by itself.
   music/         songs (.mp3) and artwork (.jpg)
   server/        song server for the Search tab (YouTube Music + yt-dlp);
                  runs on a computer or the tablet, not on GitHub Pages
-  android/       "Clock Panel" helper app for the wall panel (see THE PANEL)
+  android/       "Jellyclock" helper app for the wall panel (see THE PANEL)
 
 
 WHAT THE SCREEN DOES
@@ -100,7 +100,7 @@ another minute. Ringing stops after 10 minutes; the blue screen stays
 until Stop. Timers survive a reload or restart, and the app never
 applies an update while one is running.
 
-On the wall panel the Clock Panel app does the ringing: the TV's audio
+On the wall panel the Jellyclock app does the ringing: the TV's audio
 pauses, the volume goes to at least 80%, and both are put back after
 Stop; it rings on the second even if the clock isn't on screen.
 Elsewhere the page beeps itself, which needs one tap on the screen after
@@ -116,7 +116,7 @@ the clock then saves it like any other song and plays it.
 It stays through refreshes, restarts and Wi-Fi drops. Songs added this
 way have a bin icon in "Up next": tap it twice to remove the song.
 
-On the wall panel the song server is part of the Clock Panel app
+On the wall panel the song server is part of the Jellyclock app
 (android/, SongServer.java) on http://localhost:8790: nothing to run on a
 computer. Nothing is signed in: search is YouTube Music's own web API (as
 the ytmusicapi library uses it) and the audio comes from YouTube's player
@@ -246,8 +246,9 @@ small background service:
     notifications.
   - Intercom, timer alarms and full-screen requests from the page on
     http://127.0.0.1:8791.
-android/panel-cleanup.sh removes the vendor apps (trackers, LAN remote control,
-the slow volume echo) and the Wi-Fi password "Share" screen; see its comments.
+android/panel-cleanup.sh removes the vendor apps (trackers, LAN remote control)
+and the Wi-Fi password "Share" screen; see its comments. It keeps the maker's
+speaker app, which the Speaker corner opens, unless run with "all".
 Build: powershell -File android\build.ps1 (JDK 17 + Android build-tools 34 and
 platform 29; signing key kept in %USERPROFILE%\.clockadashi). Install:
   adb install -r android\out\clockpanel.apk
