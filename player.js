@@ -316,7 +316,7 @@
     var art = artFor(t);
     try {
       navigator.mediaSession.metadata = new MediaMetadata({
-        title: t.title, artist: t.author, album: 'Clockadashi',
+        title: t.title, artist: t.author, album: 'Jellyclock',
         artwork: art ? [{ src: abs(art), sizes: '512x512', type: 'image/jpeg' }] : []
       });
     } catch (e) {}

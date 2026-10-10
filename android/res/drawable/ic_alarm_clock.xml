@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Jellyclock: a 90s twin-bell alarm clock (the same drawing as icons/icon.svg). -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="100dp" android:height="100dp" android:viewportWidth="100" android:viewportHeight="100">
+  <path android:pathData="M31,84L25,94M69,84L75,94" android:strokeColor="#90A4AE" android:strokeWidth="6" android:strokeLineCap="round" />
+  <path android:pathData="M33,15Q50,1 67,15" android:strokeColor="#90A4AE" android:strokeWidth="4" android:strokeLineCap="round" />
+  <path android:pathData="M30,27L37,36M70,27L63,36" android:strokeColor="#90A4AE" android:strokeWidth="4" android:strokeLineCap="round" />
+  <group android:translateX="27" android:translateY="24" android:rotation="-32">
+    <path android:pathData="M-16,0A16,16 0 0 1 16,0Z" android:fillColor="#CFD8DC" />
+    <path android:pathData="M-16,0L16,0" android:strokeColor="#90A4AE" android:strokeWidth="3" android:strokeLineCap="round" />
+  </group>
+  <group android:translateX="73" android:translateY="24" android:rotation="32">
+    <path android:pathData="M-16,0A16,16 0 0 1 16,0Z" android:fillColor="#CFD8DC" />
+    <path android:pathData="M-16,0L16,0" android:strokeColor="#90A4AE" android:strokeWidth="3" android:strokeLineCap="round" />
+  </group>
+  <path android:pathData="M50,14L50,27" android:strokeColor="#607D8B" android:strokeWidth="3" android:strokeLineCap="round" />
+  <path android:pathData="M46.5,9h7a2.5,2.5 0 0 1 2.5,2.5v2a2.5,2.5 0 0 1 -2.5,2.5h-7a2.5,2.5 0 0 1 -2.5,-2.5v-2a2.5,2.5 0 0 1 2.5,-2.5z" android:fillColor="#607D8B" />
+  <path android:pathData="M17,58a33,33 0 1,0 66,0a33,33 0 1,0 -66,0z" android:fillColor="#E53935" />
+  <path android:pathData="M24,58a26,26 0 1,0 52,0a26,26 0 1,0 -52,0z" android:fillColor="#FFF8E1" />
+  <path android:pathData="M50,36L50,41M72,58L67,58M50,80L50,75M28,58L33,58" android:strokeColor="#37474F" android:strokeWidth="3" android:strokeLineCap="round" />
+  <path android:pathData="M50,58L38.7,51.5" android:strokeColor="#263238" android:strokeWidth="4.5" android:strokeLineCap="round" />
+  <path android:pathData="M50,58L65.6,49" android:strokeColor="#263238" android:strokeWidth="3.5" android:strokeLineCap="round" />
+  <path android:pathData="M46.8,58a3.2,3.2 0 1,0 6.4,0a3.2,3.2 0 1,0 -6.4,0z" android:fillColor="#E53935" />
+</vector>

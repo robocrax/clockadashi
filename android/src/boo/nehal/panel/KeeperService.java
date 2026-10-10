@@ -13,6 +13,7 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.SharedPreferences;
 import android.media.AudioAttributes;
 import android.media.AudioFocusRequest;
 import android.media.AudioFormat;
@@ -94,7 +95,7 @@ public class KeeperService extends Service {
     nm.createNotificationChannel(new NotificationChannel("keeper", "Panel keeper", NotificationManager.IMPORTANCE_MIN));
     Notification n = new Notification.Builder(this, "keeper")
         .setSmallIcon(android.R.drawable.ic_lock_idle_alarm)
-        .setContentTitle("Clock panel")
+        .setContentTitle("Jellyclock")
         .setContentText("Keeping the TV, Bluetooth and Wi‑Fi connected")
         .build();
     startForeground(1, n);
@@ -113,6 +114,7 @@ public class KeeperService extends Service {
     IntentFilter tvFilter = new IntentFilter(BluetoothDevice.ACTION_ACL_CONNECTED);
     tvFilter.addAction(A2DP_SINK_STATE_CHANGED);
     registerReceiver(tvEvents, tvFilter, null, main);
+    registerReceiver(bondChanged, new IntentFilter(BluetoothDevice.ACTION_BOND_STATE_CHANGED), null, main);
     main.post(loop);
     startServer();
     new LocalSite(this).start();
@@ -149,22 +151,109 @@ public class KeeperService extends Service {
     return System.currentTimeMillis() - tvLastSeen < FAST_RETRY_FOR_MS ? RETRY_CONNECT_FAST_MS : RETRY_CONNECT_MS;
   }
 
-  /* ---- Always back to the clock: another app left open for 10 minutes goes away ---- */
-  private void returnToClockIfLeftOpen() {
+  /* ---- Which app is in front (usage access, granted with appops) ----------------- */
+  static final String SETTINGS_APP = "com.android.settings";
+  private String frontApp;  // null until known: nothing below acts on a guess
+  private long frontSince, settingsLeftAt, usageSeen;
+
+  private void updateFrontApp() {
     UsageStatsManager usm = getSystemService(UsageStatsManager.class);
     long now = System.currentTimeMillis();
-    UsageEvents ev = usm.queryEvents(now - RETURN_TO_CLOCK_MS * 3, now);  // empty unless usage access is granted
+    // the first time, far enough back to find whatever has been in front for days
+    UsageEvents ev = usm.queryEvents(usageSeen == 0 ? now - 7 * 24 * 3600_000L : usageSeen - 2000, now);
     UsageEvents.Event e = new UsageEvents.Event();
-    String pkg = null;
-    long since = 0;
     while (ev.hasNextEvent()) {
       ev.getNextEvent(e);
-      if (e.getEventType() == UsageEvents.Event.MOVE_TO_FOREGROUND) { pkg = e.getPackageName(); since = e.getTimeStamp(); }
+      if (e.getEventType() != UsageEvents.Event.MOVE_TO_FOREGROUND || e.getTimeStamp() < frontSince) continue;
+      if (SETTINGS_APP.equals(frontApp) && !SETTINGS_APP.equals(e.getPackageName())) settingsLeftAt = e.getTimeStamp();
+      frontApp = e.getPackageName();
+      frontSince = e.getTimeStamp();
     }
-    if (pkg == null || pkg.equals(getPackageName()) || pkg.equals(HomeActivity.CHROME)) return;
-    if (now - since < RETURN_TO_CLOCK_MS) return;
-    Log.i(TAG, pkg + " open for " + (now - since) / 60000 + " min: back to the clock");
+    usageSeen = now;
+  }
+
+  /** Android's Settings is open, or was a moment ago (a pairing can finish just as it closes). */
+  private boolean settingsInUse() {
+    return SETTINGS_APP.equals(frontApp) || System.currentTimeMillis() - settingsLeftAt < 60000;
+  }
+
+  /* ---- Always back to the clock: another app left open for 10 minutes goes away ---- */
+  private void returnToClockIfLeftOpen() {
+    if (frontApp == null || frontApp.equals(getPackageName()) || frontApp.equals(HomeActivity.CHROME)) return;
+    long open = System.currentTimeMillis() - frontSince;
+    if (open < RETURN_TO_CLOCK_MS) return;
+    Log.i(TAG, frontApp + " open for " + open / 60000 + " min: back to the clock");
     HomeActivity.openClock(this);
+  }
+
+  /* ---- Bluetooth stays private ----------------------------------------------------
+     The panel is not discoverable, and only approved devices stay paired. A new device
+     can only be added from Android's Bluetooth settings (its pairing screen makes the
+     panel visible while it is open). Anything that pairs at any other time is unpaired
+     again, and discovery is switched back off if something turns it on. The devices
+     paired when this first runs are approved. */
+  private void lockBluetooth() {
+    if (bt == null || !bt.isEnabled() || frontApp == null) return;
+    Set<BluetoothDevice> bonded = bt.getBondedDevices();
+    if (bonded == null) return;
+    SharedPreferences sp = getSharedPreferences(HomeActivity.PREFS, MODE_PRIVATE);
+    Set<String> saved = sp.getStringSet("approved", null);
+    boolean first = saved == null, inSettings = settingsInUse(), changed = first;
+    Set<String> approved = first ? new HashSet<>() : new HashSet<>(saved);
+    Set<String> paired = new HashSet<>();
+    for (BluetoothDevice d : bonded) {
+      String a = d.getAddress();
+      paired.add(a);
+      if (approved.contains(a)) continue;
+      if (first || inSettings) {
+        approved.add(a);
+        changed = true;
+        Log.i(TAG, "bluetooth: approved " + d.getName() + " (" + a + ")");
+      } else {
+        Log.i(TAG, "bluetooth: " + d.getName() + " (" + a + ") paired outside Settings: unpairing it");
+        try { BluetoothDevice.class.getMethod("removeBond").invoke(d); } catch (Exception e) { Log.w(TAG, "unpair failed", e); }
+      }
+    }
+    // forgetting a device (done in Settings) withdraws its approval
+    if (SETTINGS_APP.equals(frontApp) && !paired.isEmpty() && approved.retainAll(paired)) changed = true;
+    if (changed) sp.edit().putStringSet("approved", approved).apply();
+
+    // visible only while Settings is actually in front (no grace period for this)
+    if (!SETTINGS_APP.equals(frontApp) && bt.getScanMode() == BluetoothAdapter.SCAN_MODE_CONNECTABLE_DISCOVERABLE) {
+      try {
+        BluetoothAdapter.class.getMethod("setScanMode", int.class).invoke(bt, BluetoothAdapter.SCAN_MODE_CONNECTABLE);
+        Log.i(TAG, "bluetooth: discovery switched off");
+      } catch (Exception e) {
+        Log.w(TAG, "could not switch discovery off", e);
+      }
+    }
+  }
+
+  private final BroadcastReceiver bondChanged = new BroadcastReceiver() {
+    @Override public void onReceive(Context c, Intent i) {  // check a new pairing at once, not at the next loop
+      try { updateFrontApp(); lockBluetooth(); } catch (Exception e) { Log.w(TAG, "bond check", e); }
+    }
+  };
+
+  /* ---- "Refresh Bluetooth" on the home screen: off, wait until it is off, on again ---- */
+  static final String ACTION_REFRESH_BT = "boo.nehal.panel.REFRESH_BT";
+  private long refreshUntil;
+
+  private void refreshBluetooth() {
+    if (bt == null || System.currentTimeMillis() < refreshUntil) return;
+    Log.i(TAG, "Bluetooth refresh: turning it off");
+    refreshUntil = System.currentTimeMillis() + 20000;
+    bt.disable();
+    main.postDelayed(new Runnable() {
+      int waited;
+      @Override public void run() {
+        if (bt.getState() != BluetoothAdapter.STATE_OFF && ++waited < 12) { main.postDelayed(this, 1000); return; }
+        Log.i(TAG, "Bluetooth refresh: turning it on, then reconnecting the TV");
+        bt.enable();
+        tvLastSeen = System.currentTimeMillis();  // retry the TV every few seconds for a while
+        lastConnectTry = 0;
+      }
+    }, 2000);
   }
 
   /* ---- Amplifier volume follows Android's media volume immediately ------- */
@@ -186,12 +275,16 @@ public class KeeperService extends Service {
     registerReceiver(volumeChanged, new IntentFilter("android.media.VOLUME_CHANGED_ACTION"), null, main);
   }
 
-  @Override public int onStartCommand(Intent i, int flags, int id) { return START_STICKY; }
+  @Override public int onStartCommand(Intent i, int flags, int id) {
+    if (i != null && ACTION_REFRESH_BT.equals(i.getAction())) refreshBluetooth();
+    return START_STICKY;
+  }
 
   @Override public void onDestroy() {
     main.removeCallbacksAndMessages(null);
     try { unregisterReceiver(volumeChanged); } catch (IllegalArgumentException notRegistered) {}
     try { unregisterReceiver(tvEvents); } catch (IllegalArgumentException notRegistered) {}
+    try { unregisterReceiver(bondChanged); } catch (IllegalArgumentException notRegistered) {}
     try { if (server != null) server.close(); } catch (Exception ignored) {}
     endIntercom();
     if (alarmTrack != null) stopRinging();
@@ -212,6 +305,7 @@ public class KeeperService extends Service {
   private final Runnable loop = new Runnable() {
     @Override public void run() {
       try { checkBluetooth(); } catch (Exception e) { Log.w(TAG, "loop", e); }
+      try { updateFrontApp(); lockBluetooth(); } catch (Exception e) { Log.w(TAG, "bluetooth lock", e); }
       if (++loops % 6 == 0) {
         try { returnToClockIfLeftOpen(); } catch (Exception e) { Log.w(TAG, "return to clock", e); }
       }

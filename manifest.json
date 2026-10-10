@@ -1,6 +1,6 @@
 {
-  "name": "Clockadashi",
-  "short_name": "Clockadashi",
+  "name": "Jellyclock",
+  "short_name": "Jellyclock",
   "description": "Wall clock with Ekadashi countdowns and offline devotional music",
   "id": "./",
   "start_url": "./index.html",

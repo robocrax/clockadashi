@@ -7,7 +7,7 @@
   'use strict';
 
   /* ---- Settings ---------------------------------------------------------- */
-  var VERSION = '3.7.1';
+  var VERSION = '3.8.0';
   var COUNTDOWN_DAYS = 8;      // a ProgressBar event gets its bar this many days ahead
   var APPROACH_DAYS = 4;       // purple tint from this many days out, until the red day before
   var PAD_HOURS = true;        // 08:05 rather than 8:05, so the clock never changes width
@@ -684,7 +684,7 @@
 
   function openDiag() {
     var lines = [
-      'Clockadashi ' + VERSION + (offsetMs || previewDay ? '  (previewing ' + when(now().getTime()) + ')' : ''),
+      'Jellyclock ' + VERSION + (offsetMs || previewDay ? '  (previewing ' + when(now().getTime()) + ')' : ''),
       'Network: ' + (net.online ? 'online' : 'OFFLINE') + ' since ' + when(net.changedAt) +
         '; server last reached ' + when(net.lastOk),
       'Calendar last checked: ' + when(+lsGet(LS_SYNCED)),

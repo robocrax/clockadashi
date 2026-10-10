@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+  <string name="app_name">Jellyclock</string>
+  <string name="power_menu_label">Jellyclock power menu</string>
+  <string name="power_menu_description">Lets the Jellyclock home screen\'s \"Restart panel\" button open Android\'s power menu (Power off / Restart). It does nothing else and cannot read the screen.</string>
+</resources>

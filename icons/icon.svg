@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100%" height="100%">
+  <!-- Jellyclock: a 90s twin-bell alarm clock. Source for icon-192.png and icon-512.png
+       (rendered at those sizes); the Android launcher has the same drawing as a vector,
+       android/res/drawable/ic_alarm_clock.xml. Drawn inside the middle 72% so it survives
+       Android's round / squircle icon masks. -->
+  <rect width="100" height="100" fill="#101014"/>
+  <g transform="translate(14 13) scale(0.72)" stroke-linecap="round" fill="none">
+    <path d="M31 84L25 94M69 84L75 94" stroke="#90A4AE" stroke-width="6"/>
+    <path d="M33 15Q50 1 67 15" stroke="#90A4AE" stroke-width="4"/>
+    <path d="M30 27L37 36M70 27L63 36" stroke="#90A4AE" stroke-width="4"/>
+    <g transform="translate(27 24) rotate(-32)">
+      <path d="M-16 0A16 16 0 0 1 16 0Z" fill="#CFD8DC"/>
+      <path d="M-16 0L16 0" stroke="#90A4AE" stroke-width="3"/>
+    </g>
+    <g transform="translate(73 24) rotate(32)">
+      <path d="M-16 0A16 16 0 0 1 16 0Z" fill="#CFD8DC"/>
+      <path d="M-16 0L16 0" stroke="#90A4AE" stroke-width="3"/>
+    </g>
+    <path d="M50 14L50 27" stroke="#607D8B" stroke-width="3"/>
+    <rect x="44" y="9" width="12" height="7" rx="2.5" fill="#607D8B"/>
+    <circle cx="50" cy="58" r="33" fill="#E53935"/>
+    <circle cx="50" cy="58" r="26" fill="#FFF8E1"/>
+    <path d="M50 36L50 41M72 58L67 58M50 80L50 75M28 58L33 58" stroke="#37474F" stroke-width="3"/>
+    <path d="M50 58L38.7 51.5" stroke="#263238" stroke-width="4.5"/>
+    <path d="M50 58L65.6 49" stroke="#263238" stroke-width="3.5"/>
+    <circle cx="50" cy="58" r="3.2" fill="#E53935"/>
+  </g>
+</svg>

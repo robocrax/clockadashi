@@ -27,8 +27,8 @@ $siteFiles = @('index.html', 'style.css', 'app.js', 'player.js', 'intercom.js', 
 New-Item -ItemType Directory -Force "$out\native\assets\site\icons", "$out\native\assets\site\fonts" | Out-Null
 foreach ($f in $siteFiles) { Copy-Item "$site\$f" "$out\native\assets\site\$f" }
 
-& "$bt\aapt2.exe" link -o "$out\base.apk" -I $jar --manifest "$here\AndroidManifest.xml" -R "$out\res.zip" `
-  --java "$out\gen" --min-sdk-version 26 --target-sdk-version 28 --version-code 3 --version-name 1.2
+& "$bt\aapt2.exe" link -o "$out\base.apk" -I $jar --manifest "$here\AndroidManifest.xml" `
+  --java "$out\gen" --min-sdk-version 26 --target-sdk-version 28 --version-code 4 --version-name 1.3 "$out\res.zip"
 if ($LASTEXITCODE) { throw 'aapt2 link failed' }
 
 $srcs = @(Get-ChildItem "$here\src", "$out\gen" -Recurse -Filter *.java | ForEach-Object FullName)

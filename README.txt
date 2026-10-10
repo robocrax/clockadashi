@@ -208,8 +208,8 @@ comes back when one works.
 
 THE PANEL (android/)
 --------------------
-The "Clock Panel" helper app is the panel's home screen and runs a small
-background service:
+The helper app, "Jellyclock" on the panel, is its home screen and runs a
+small background service:
   - Runs the song server for the Search tab (see above).
   - Serves the clock itself on http://localhost:8642: the copy bundled in the
     app to start with, replaced by any newer one published to clock.nehal.boo
@@ -217,9 +217,21 @@ background service:
     clock.nehal.boo the first time and are kept on the panel. It opens with no
     internet and doesn't depend on GitHub Pages; "Offline" still means the
     internet can't be reached.
-  - Home / boot: a 4-second countdown, then the clock opens as the installed
-    full-screen app (Chrome menu > Install on http://localhost:8642, accepted
-    by this app). "Stay here" reaches Settings, Wi-Fi and Bluetooth.
+  - Home / boot: the alarm clock and "Jellyclock", a 4-second countdown, then
+    the clock opens as the installed full-screen app (Chrome menu > Install
+    on http://localhost:8642, accepted by this app). A tap anywhere pauses
+    the countdown; it starts again after a minute untouched. Tiles: Open
+    clock, Settings, Wi-Fi, Bluetooth. In the corners:
+      Speaker            the panel maker's speaker / music app
+      Restart panel      Android's power menu (Power off / Restart)
+      Refresh Bluetooth  Bluetooth off and on, then the TV is reconnected:
+                         for a lagging or stuttering TV link
+      Restart clock      closes the clock app completely and reopens it
+  - Bluetooth stays private: the panel is not discoverable, and only approved
+    devices stay paired. To add one, open Bluetooth from the home screen
+    (Settings' pairing screen makes the panel visible while it is open).
+    Anything that pairs at any other time is unpaired again; forgetting a
+    device in Settings withdraws its approval.
   - Reconnects the TV ("Living Room TV", any paired device with "TV" in its
     name) as the Bluetooth audio source whenever nothing is connected: at
     once when the TV appears, every 8 s for 3 minutes after it drops, every
@@ -244,6 +256,10 @@ platform 29; signing key kept in %USERPROFILE%\.clockadashi). Install:
   adb shell appops set boo.nehal.panel GET_USAGE_STATS allow
   adb shell cmd notification allow_listener boo.nehal.panel/.PromptBlocker
   adb shell settings put global hidden_api_policy 1
+  adb shell settings put secure enabled_accessibility_services boo.nehal.panel/boo.nehal.panel.PowerMenuService
+  adb shell settings put secure accessibility_enabled 1
+(the last two switch on "Jellyclock power menu", which only lets Restart panel
+open Android's power menu; the same switch is in Settings > Accessibility)
 Undo: adb shell cmd package set-home-activity com.youzhuan.musiclauncher/.MainActivity
 android/root/ holds an optional boot script that also switches off the Wi-Fi
 driver's power saving and Bluetooth sleep (needs adb remount; not installed).
