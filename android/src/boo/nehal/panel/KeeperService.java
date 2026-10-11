@@ -78,7 +78,7 @@ public class KeeperService extends Service {
   static final long RETRY_CONNECT_MS = 30000;        // TV off for a while: try every 30 s
   static final long RETRY_CONNECT_FAST_MS = 8000;    // just after it dropped or showed up: every 8 s
   static final long FAST_RETRY_FOR_MS = 180000;
-  static final long RETURN_TO_CLOCK_MS = 10 * 60000; // another app left open this long: back to the clock
+  static final long RETURN_TO_CLOCK_MS = 60000;      // another app left on one screen this long: back to the clock
   static final long INTERCOM_SAFETY_MS = 90000;
   static final String[] ORIGINS = { "https://clock.nehal.boo", "http://localhost:8642", "http://127.0.0.1:8642" };
 
@@ -194,12 +194,18 @@ public class KeeperService extends Service {
     return SETTINGS_APP.equals(frontApp) || System.currentTimeMillis() - settingsLeftAt < 60000;
   }
 
-  /* ---- Always back to the clock: another app left open for 10 minutes goes away ---- */
+  /* ---- Always back to the clock: another app (Settings, a menu) left alone for a minute goes
+     away. "Left alone" means no new screen in it for a minute: every page opened, or Back,
+     counts as use (an app can't see the taps themselves). Our home screen has its own
+     countdown, and Chrome is the clock. */
+  private long lastReturn;
+
   private void returnToClockIfLeftOpen() {
     if (frontApp == null || frontApp.equals(getPackageName()) || frontApp.equals(HomeActivity.CHROME)) return;
-    long open = System.currentTimeMillis() - frontSince;
-    if (open < RETURN_TO_CLOCK_MS) return;
-    Log.i(TAG, frontApp + " open for " + open / 60000 + " min: back to the clock");
+    long now = System.currentTimeMillis(), still = now - frontSince;
+    if (still < RETURN_TO_CLOCK_MS || now - lastReturn < 20000) return;
+    lastReturn = now;
+    Log.i(TAG, frontApp + " left on one screen for " + still / 1000 + " s: back to the clock");
     HomeActivity.openClock(this);
   }
 
@@ -483,8 +489,8 @@ public class KeeperService extends Service {
     @Override public void run() {
       try { checkBluetooth(); } catch (Exception e) { Log.w(TAG, "loop", e); }
       try { updateFrontApp(); lockBluetooth(); } catch (Exception e) { Log.w(TAG, "bluetooth lock", e); }
+      try { returnToClockIfLeftOpen(); } catch (Exception e) { Log.w(TAG, "return to clock", e); }
       if (++loops % 6 == 0) {
-        try { returnToClockIfLeftOpen(); } catch (Exception e) { Log.w(TAG, "return to clock", e); }
         try { nightly(); } catch (Exception e) { Log.w(TAG, "nightly", e); }
       }
       if (!wifiLock.isHeld()) wifiLock.acquire();

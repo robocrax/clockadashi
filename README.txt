@@ -278,7 +278,11 @@ small background service:
     name) as the Bluetooth audio source whenever nothing is connected: at
     once when the TV appears, every 8 s for 3 minutes after it drops, every
     30 s otherwise. Turns Bluetooth back on if it is left off.
-  - Brings the clock back if another app is left in front for 10 minutes.
+  - Always back to the clock: if another app (Settings, a menu) is left on the
+    same screen for a minute, the clock comes back. Opening another page in it,
+    or Back, counts as using it; taps within one page can't be seen by an app,
+    so a minute on a single page is enough to return. The Jellyclock home
+    screen keeps its own countdown.
   - Sets the amplifier's hardware volume the instant Android's volume changes
     (the vendor music app only copied it across every ~1.5 s, so TV volume
     changes reached the speakers late). Uses the panel's own driver library,
