@@ -17,12 +17,12 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Process;
+import android.os.SystemClock;
 import android.provider.Settings;
 import android.view.Gravity;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
-import android.view.animation.LinearInterpolator;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
@@ -52,16 +52,19 @@ public class HomeActivity extends Activity {
   private SeekBar volumeBar;
   private AudioManager am;
   private float dp;
-  private int left;
+  private long countdownStart;
   private boolean paused;
 
+  // The bar and the seconds both follow one clock, so the bar fills exactly as the clock opens
+  // (an animator would run at the panel's animation speed, which is set to half in Developer options).
   private final Runnable tick = new Runnable() {
     @Override public void run() {
       if (paused) return;
-      if (left <= 0) { openClock(); return; }
-      status.setText("Opening the clock in " + left + "…");
-      left--;
-      h.postDelayed(this, 1000);
+      long total = COUNTDOWN_SEC * 1000L, elapsed = SystemClock.uptimeMillis() - countdownStart;
+      bar.setScaleX(Math.min(1f, elapsed / (float) total));
+      if (elapsed >= total) { openClock(); return; }
+      status.setText("Opening the clock in " + (int) Math.ceil((total - elapsed) / 1000.0) + "…");
+      h.postDelayed(this, 16);
     }
   };
   private final Runnable resume = this::startCountdown;
@@ -206,13 +209,11 @@ public class HomeActivity extends Activity {
   /* ---- Countdown: any tap pauses it ------------------------------------------- */
   private void startCountdown() {
     paused = false;
-    left = COUNTDOWN_SEC;
+    countdownStart = SystemClock.uptimeMillis();
     h.removeCallbacks(tick);
     h.removeCallbacks(resume);
-    h.post(tick);
-    bar.animate().cancel();
     bar.setScaleX(0);
-    bar.animate().scaleX(1).setDuration(COUNTDOWN_SEC * 1000L).setInterpolator(new LinearInterpolator()).start();
+    h.post(tick);
   }
 
   private void pause(String why) {
@@ -220,7 +221,6 @@ public class HomeActivity extends Activity {
     h.removeCallbacks(tick);
     h.removeCallbacks(resume);
     h.postDelayed(resume, PAUSED_SEC * 1000L);
-    bar.animate().cancel();
     bar.setScaleX(0);
     status.setText(why);
   }
@@ -249,7 +249,6 @@ public class HomeActivity extends Activity {
     super.onPause();
     h.removeCallbacks(tick);
     h.removeCallbacks(resume);
-    bar.animate().cancel();
     hideVolume();
   }
 
