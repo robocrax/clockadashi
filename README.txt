@@ -9,8 +9,8 @@ pushing to main deploys it, and the tablet picks the change up by itself.
   app.js         clock, calendar, alert colours, offline data, updates, activity log
   player.js      music: mini player, full player, offline song library
   intercom.js    hold-to-talk microphone next to the mini player
-  timers.js      kitchen timers (the "Timer" button, top-right)
-  calendar.js    the month (calendar button, top-right): Ekadashis, Gujarati months
+  timers.js      kitchen timers (the "Timer" button, top-left)
+  calendar.js    the month (calendar button, top-left): Ekadashis, Gujarati months
   sw.js          service worker (makes everything work without Wi-Fi)
   manifest.json  lets Android install it as a full-screen app
   fonts/         Google Sans Flex, cut down for this app (OFL licence)
@@ -25,8 +25,8 @@ pushing to main deploys it, and the tablet picks the change up by itself.
 
 WHAT THE SCREEN DOES
 --------------------
-Along the top: the music player on the left, the calendar and the kitchen
-timers on the right. Below them today's events, the clock filling the
+Along the top: the kitchen timers and the calendar on the left, the music
+player on the right. Below them today's events, the clock filling the
 middle, the date under it, and the countdown bars across the full width
 of the bottom.
 
@@ -63,7 +63,7 @@ EVENTS.CSV
 
 MUSIC
 -----
-Always visible top-left. Tap the song name or artwork to open the full
+Always visible top-right. Tap the song name or artwork to open the full
 player (YouTube Music style): big artwork, seek bar, previous/next,
 shuffle, repeat (all / one / off), volume, and the "Up next" list where a
 tick means the song is saved on the tablet. The Android back button or
@@ -84,7 +84,7 @@ Square art and 16:9 video thumbnails both work.
 
 KITCHEN TIMERS
 --------------
-Tap the "Timer" button in the top-right corner (the first tap of each
+Tap the "Timer" button in the top-left corner (the first tap of each
 visit throws a "Let's BAKE!" shower of cookies and cupcakes). A new timer
 starts at the length of the last one started; 20 minutes the very first
 time. Tap - or + to change it a minute at a time, or hold to change it
@@ -214,7 +214,7 @@ INSTALLING ON THE TABLET
 ------------------------
 Chrome menu > Add to Home screen > Install. Open it from the home screen
 icon: it runs full screen with no browser bar, with no tap needed. In a
-normal Chrome tab, tap anywhere to go full screen; the faint icon left of
+normal Chrome tab, tap anywhere to go full screen; the faint icon right of
 the calendar button leaves full screen. The screen is kept awake while the
 app is open.
 

@@ -10,20 +10,43 @@
 <link rel="manifest" href="manifest.json">
 <link rel="icon" type="image/png" href="icons/icon-192.png">
 <link rel="preload" href="fonts/GoogleSansFlex-clockadashi.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="style.css?v=3.9.0">
-<script defer src="app.js?v=3.9.0"></script>
-<script defer src="player.js?v=3.9.0"></script>
-<script defer src="intercom.js?v=3.9.0"></script>
-<script defer src="timers.js?v=3.9.0"></script>
-<script defer src="calendar.js?v=3.9.0"></script>
+<link rel="stylesheet" href="style.css?v=3.9.1">
+<script defer src="app.js?v=3.9.1"></script>
+<script defer src="player.js?v=3.9.1"></script>
+<script defer src="intercom.js?v=3.9.1"></script>
+<script defer src="timers.js?v=3.9.1"></script>
+<script defer src="calendar.js?v=3.9.1"></script>
 </head>
 <body class="s-calm">
 <noscript><div class="noscript">Javascript is not supported on this browser</div></noscript>
 
-<!-- The clock screen: music and timers along the top, today's events, the clock,
-     then the countdown bars across the full width. -->
+<!-- The clock screen: timers, calendar and music along the top, today's events, the
+     clock, then the countdown bars across the full width. -->
 <main id="screen">
   <header id="head">
+    <div id="tools">
+      <!-- Kitchen timers, top-left: "Timer" when idle; while running, the next one to
+           finish in big digits with its progress ring, and a card with the two after it. -->
+      <div id="timerDock">
+        <button id="timerFab" type="button" aria-label="Kitchen timers">
+          <span class="tf-head">
+            <span id="tfIcon" class="tf-icon" data-icon="timer"></span>
+            <svg id="tfRing" class="tf-ring" viewBox="0 0 40 40" aria-hidden="true" hidden>
+              <circle class="tf-track" cx="20" cy="20" r="16"></circle>
+              <circle id="tfArc" class="tf-arc" cx="20" cy="20" r="16"></circle>
+            </svg>
+            <span id="tfLabel" class="tf-label">Timer</span>
+          </span>
+          <span id="tfTime" class="tf-time num" hidden></span>
+        </button>
+        <button id="timerNext" type="button" aria-label="More timers" hidden></button>
+      </div>
+      <!-- The month, with Ekadashi and countdown days marked; a day can be previewed (date only, never the time). -->
+      <button id="calBtn" class="ibtn" type="button" aria-label="Calendar" data-icon="calendar"></button>
+      <button id="fsBtn" class="ibtn" type="button" aria-label="Full screen" data-icon="fullscreen"></button>
+    </div>
+    <div id="status" hidden><span id="statusIcon" hidden></span><span id="statusText"></span></div>
+    <!-- Music, top-right. -->
     <div id="dock">
       <div id="mini">
         <button id="miniOpen" type="button" aria-label="Open music player">
@@ -36,28 +59,6 @@
       </div>
       <!-- Intercom: hold to record, let go to play it through the panel at full volume. -->
       <button id="miniTalk" class="ibtn" type="button" aria-label="Hold to talk" data-icon="mic"></button>
-    </div>
-    <div id="status" hidden><span id="statusIcon" hidden></span><span id="statusText"></span></div>
-    <div id="tools">
-      <button id="fsBtn" class="ibtn" type="button" aria-label="Full screen" data-icon="fullscreen"></button>
-      <!-- The month, with Ekadashi and countdown days marked; a day can be previewed (date only, never the time). -->
-      <button id="calBtn" class="ibtn" type="button" aria-label="Calendar" data-icon="calendar"></button>
-      <!-- Kitchen timers, top-right: "Timer" when idle; while running, the next one to
-           finish in big digits with its progress ring, and a card with the two after it. -->
-      <div id="timerDock">
-        <button id="timerNext" type="button" aria-label="More timers" hidden></button>
-        <button id="timerFab" type="button" aria-label="Kitchen timers">
-          <span class="tf-head">
-            <span id="tfIcon" class="tf-icon" data-icon="timer"></span>
-            <svg id="tfRing" class="tf-ring" viewBox="0 0 40 40" aria-hidden="true" hidden>
-              <circle class="tf-track" cx="20" cy="20" r="16"></circle>
-              <circle id="tfArc" class="tf-arc" cx="20" cy="20" r="16"></circle>
-            </svg>
-            <span id="tfLabel" class="tf-label">Timer</span>
-          </span>
-          <span id="tfTime" class="tf-time num" hidden></span>
-        </button>
-      </div>
     </div>
   </header>
 

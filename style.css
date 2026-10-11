@@ -129,22 +129,23 @@ button { font: inherit; color: inherit; }
   top: 0; right: 0; bottom: 0; left: 0;
   display: grid;
   grid-template-rows: auto auto minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr);  /* never wider than the screen */
   padding: max(10px, 1.8vh) var(--edge) max(12px, 2.6vh);
 }
 
-/* Top row: the music player top-left, the calendar and kitchen timers top-right,
+/* Top row: the kitchen timers and calendar top-left, the music player top-right,
    any status (offline, previewing, saving songs) between them. */
 #head {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  grid-template-areas: "dock status tools";
+  grid-template-columns: auto minmax(0, 1fr) minmax(0, auto);  /* music gives way to running timers */
+  grid-template-areas: "tools status dock";
   grid-column-gap: max(12px, 1.4vw);
   align-items: start;
   margin-bottom: max(6px, 1vh);
 }
 #dock { grid-area: dock; }
 #status { grid-area: status; }
-#tools { grid-area: tools; display: flex; align-items: flex-start; justify-content: flex-end; gap: max(10px, 1vw); }
+#tools { grid-area: tools; display: flex; align-items: flex-start; gap: max(10px, 1vw); }
 
 #top {
   text-align: center;
@@ -231,12 +232,13 @@ body.s-tomorrow .cd:first-child .cd-label { font-weight: 700; }
 .cd-more .cd-label { font-size: clamp(13px, 1.8vw, 30px); color: var(--ink-2); }
 .cd-more .cd-track { height: clamp(8px, 1.4vh, 16px); }
 
-/* ---- Mini player, top-left: always visible, tap to open the full player -- */
+/* ---- Mini player, top-right: always visible, tap to open the full player - */
 #mini {
   position: relative;
   display: flex;
   align-items: center;
-  width: clamp(270px, 30vw, 440px);
+  flex: 0 1 clamp(270px, 30vw, 440px);  /* narrower when running timers need the top row */
+  min-width: 210px;
   height: clamp(64px, 9vh, 84px);
   padding-right: 6px;
   border-radius: 14px;
@@ -309,9 +311,9 @@ body.s-tomorrow .cd:first-child .cd-label { font-weight: 700; }
 }
 #miniTalk.is-playing { background: var(--surface-press); }
 
-/* ---- Kitchen timers, top-right ----------------------------------------------
+/* ---- Kitchen timers, top-left -----------------------------------------------
    Idle: a "Timer" pill. Running: the next timer to finish in digits readable
-   across the room (with its progress ring), plus a card to its left with the
+   across the room (with its progress ring), plus a card to its right with the
    two after it. The top row grows and the clock shrinks to make room.
    Ringing turns the corner blue. */
 #timerDock { display: flex; align-items: flex-start; gap: max(10px, 1vw); }
@@ -462,7 +464,7 @@ body.timers-on .tf-label { margin-left: 8px; font-size: clamp(16px, 2.7vh, 22px)
 #dayNext { right: max(6px, 0.8vw); }
 
 @media (orientation: portrait) {
-  #head { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "dock tools" "status status"; grid-row-gap: 1vh; }
+  #head { grid-template-columns: auto minmax(0, 1fr); grid-template-areas: "tools dock" "status status"; grid-row-gap: 1vh; }
   #dock { min-width: 0; }
   #status { height: 28px; }
   #mini { width: auto; flex: 1; min-width: 0; }

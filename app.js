@@ -7,7 +7,7 @@
   'use strict';
 
   /* ---- Settings ---------------------------------------------------------- */
-  var VERSION = '3.9.0';
+  var VERSION = '3.9.1';
   var COUNTDOWN_DAYS = 8;      // a ProgressBar event gets its bar this many days ahead
   var APPROACH_DAYS = 4;       // purple tint from this many days out, until the red day before
   var PAD_HOURS = true;        // 08:05 rather than 8:05, so the clock never changes width
@@ -123,7 +123,7 @@
   /* ---- Time ---------------------------------------------------------------
      ?now=2026-10-21T20:00 previews any moment (the clock runs on from there),
      handy for checking the red and saffron days without editing events.csv.
-     The calendar button (top-right) previews another date on the screen itself:
+     The calendar button (top-left) previews another date on the screen itself:
      only the date changes, the time of day stays real. */
   var offsetMs = 0, previewDay = null;  // previewDay: { y, m (0-11), d }
   (function () {
@@ -616,7 +616,7 @@
       .then(function () { log('screen', 'idle in a browser tab: reopened as the full-screen app'); }, noop);
   }
 
-  /* ---- Date preview: the calendar button, top-right --------------------------
+  /* ---- Date preview: the calendar button, top-left ---------------------------
      The button opens the month (calendar.js); tapping a day there shows the
      screen as it will look that day (colours, events, countdown bars, date).
      While previewing, arrows at the screen's sides step a day back or forward.

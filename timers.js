@@ -1,6 +1,6 @@
 /* =========================================================================
    Clockadashi — kitchen timers.
-   The "Timer" button in the top-right corner opens them; several can run at
+   The "Timer" button in the top-left corner opens them; several can run at
    once. While they run, the corner shows the next one to finish in digits
    readable across the kitchen, and a card beside it the two after that.
    A new timer starts at the length of the last one started (20 minutes the

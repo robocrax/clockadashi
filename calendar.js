@@ -1,5 +1,5 @@
 /* =========================================================================
-   Clockadashi — the month, from the calendar button (top-right).
+   Clockadashi — the month, from the calendar button (top-left).
    A wall-calendar month in the Gujarati style: the lunar month names and
    the Vikram Samvat year above the grid, each Ekadashi marked with a fruit
    (a fasting day), countdown (ProgressBar) days in saffron, Poonam and
