@@ -155,8 +155,11 @@ public class KeeperService extends Service {
         Log.i(TAG, "TV audio dropped: retrying every " + RETRY_CONNECT_FAST_MS / 1000 + " s for a while");
         tvLastSeen = System.currentTimeMillis();
         lastConnectTry = 0;
-        // our own Bluetooth restart, or the TV being switched off while silent, isn't trouble
-        if (tvLastSeen > refreshUntil && wasStreamingLately()) trouble(drops, DROP_WINDOW_MS, DROP_LIMIT, "TV audio dropped");
+        // our own Bluetooth restart, Bluetooth crashing (counted on its own), or the TV being
+        // switched off while silent, isn't link trouble
+        if (tvLastSeen > refreshUntil && !crashedLately(60000) && wasStreamingLately()) {
+          trouble(drops, DROP_WINDOW_MS, DROP_LIMIT, "TV audio dropped");
+        }
       }
     }
   };
@@ -276,8 +279,11 @@ public class KeeperService extends Service {
      a moment, over and over. Enough of these close together and Bluetooth is restarted, as
      "Refresh Bluetooth" does, at most every half hour. If three of those in two hours don't
      help, it stops trying and the clock page suggests restarting the panel (an app can't
-     restart Android). Every night at 4, with nothing playing and no timer about to ring,
-     Bluetooth and the clock get a fresh start. */
+     restart Android). Bluetooth crashing is counted apart: restarting it can't help (on this
+     panel it is Android's CheckJNI check aborting on some TV titles), so nothing is restarted
+     for a while after a crash and the clock page says what is happening instead.
+     Every night at 4, with nothing playing and no timer about to ring, Bluetooth and the
+     clock get a fresh start. */
   static final long DROP_WINDOW_MS = 10 * 60000;  // 2 drops in 10 minutes: unstable
   static final int DROP_LIMIT = 2;
   static final long BLIP_WINDOW_MS = 3 * 60000;   // 5 stream stop-starts in 3 minutes: unstable
@@ -288,7 +294,11 @@ public class KeeperService extends Service {
   static final int GIVE_UP_AFTER = 3;
   static final int NIGHTLY_HOUR = 4;
 
+  static final long CRASH_WINDOW_MS = 30 * 60000;  // 2 Bluetooth crashes in 30 minutes: say so on the clock
+  static final long QUIET_AFTER_CRASH_MS = 10 * 60000;
+
   private final ArrayDeque<Long> drops = new ArrayDeque<>(), blips = new ArrayDeque<>(), autoRefreshes = new ArrayDeque<>();
+  private final ArrayDeque<Long> crashes = new ArrayDeque<>();
   private final ArrayDeque<String> healthLog = new ArrayDeque<>();
   private boolean streaming;
   private long streamStoppedAt;
@@ -312,6 +322,7 @@ public class KeeperService extends Service {
     int n = recent(q, window, now);
     note(what + " (" + n + " in " + window / 60000 + " min)");
     if (n < limit || now < refreshUntil || alarmTrack != null || player != null) return;
+    if (crashedLately(QUIET_AFTER_CRASH_MS)) return;  // a crashing stack isn't helped by a restart
     if (!autoRefreshes.isEmpty() && now - autoRefreshes.peekLast() < AUTO_REFRESH_GAP_MS) return;
     if (recent(autoRefreshes, GIVE_UP_WINDOW_MS, now) >= GIVE_UP_AFTER) return;  // not helping: see advice()
     autoRefreshes.addLast(now);
@@ -321,10 +332,16 @@ public class KeeperService extends Service {
     refreshBluetooth();
   }
 
-  /** Shown on the clock page when restarting Bluetooth by itself hasn't helped. */
+  /** Shown on the clock page when Bluetooth keeps crashing, or restarting it hasn't helped. */
   private String advice() {
-    if (recent(autoRefreshes, GIVE_UP_WINDOW_MS, System.currentTimeMillis()) < GIVE_UP_AFTER) return "";
+    long now = System.currentTimeMillis();
+    if (recent(crashes, CRASH_WINDOW_MS, now) >= 2) return "Bluetooth keeps crashing · TV titles (see README)";
+    if (recent(autoRefreshes, GIVE_UP_WINDOW_MS, now) < GIVE_UP_AFTER) return "";
     return "TV sound keeps dropping · restart the panel (Home, top-right)";
+  }
+
+  private boolean crashedLately(long within) {
+    return !crashes.isEmpty() && System.currentTimeMillis() - crashes.peekLast() < within;
   }
 
   private boolean wasStreamingLately() {
@@ -353,7 +370,7 @@ public class KeeperService extends Service {
       try {
         boolean on = tvPlaying();
         long now = System.currentTimeMillis();
-        boolean ours = alarmTrack != null || player != null || now < refreshUntil;  // we paused it
+        boolean ours = alarmTrack != null || player != null || now < refreshUntil || crashedLately(60000);
         if (on && !streaming && !ours && streamStoppedAt > 0 && now - streamStoppedAt < BLIP_GAP_MS)
           trouble(blips, BLIP_WINDOW_MS, BLIP_LIMIT, "TV stream stopped and started again");
         if (!on && streaming) streamStoppedAt = now;
@@ -367,9 +384,10 @@ public class KeeperService extends Service {
 
   private final BroadcastReceiver adapterState = new BroadcastReceiver() {
     @Override public void onReceive(Context c, Intent i) {
-      if (i.getIntExtra(BluetoothAdapter.EXTRA_STATE, -1) == BluetoothAdapter.STATE_TURNING_OFF
-          && System.currentTimeMillis() > refreshUntil) {
-        trouble(drops, DROP_WINDOW_MS, DROP_LIMIT, "Bluetooth stopped by itself");
+      long now = System.currentTimeMillis();
+      if (i.getIntExtra(BluetoothAdapter.EXTRA_STATE, -1) == BluetoothAdapter.STATE_TURNING_OFF && now > refreshUntil) {
+        crashes.addLast(now);
+        note("Bluetooth stopped by itself (" + recent(crashes, CRASH_WINDOW_MS, now) + " in 30 min)");
       }
     }
   };
@@ -401,7 +419,8 @@ public class KeeperService extends Service {
     String tv = connected ? (streaming ? "TV connected and playing" : "TV connected") : "TV not connected";
     StringBuilder s = new StringBuilder(tv).append("; ")
         .append(recent(drops, DROP_WINDOW_MS, now)).append(" drops in 10 min, ")
-        .append(recent(blips, BLIP_WINDOW_MS, now)).append(" stream restarts in 3 min");
+        .append(recent(blips, BLIP_WINDOW_MS, now)).append(" stream restarts in 3 min, ")
+        .append(recent(crashes, CRASH_WINDOW_MS, now)).append(" Bluetooth crashes in 30 min");
     if (isA2dpPlaying == null && lookedForIsPlaying) s.append(" (stream state not visible on this Android)");
     if (!healthLog.isEmpty()) s.append("; recent: ").append(TextUtils.join(" | ", healthLog));
     JSONObject j = new JSONObject();

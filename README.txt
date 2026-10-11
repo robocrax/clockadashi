@@ -309,6 +309,16 @@ platform 29; signing key kept in %USERPROFILE%\.clockadashi). Install:
 open Android's power menu; the same switch is in Settings > Accessibility)
 Undo: adb shell pm enable com.youzhuan.music, then
   adb shell cmd package set-home-activity com.youzhuan.musiclauncher/.MainActivity
+"Bluetooth keeps stopping" / the TV dropping and reconnecting every few seconds:
+the panel's firmware is a debug ("eng") build, where Android's CheckJNI check is
+on, and the Bluetooth process aborts on a TV title cut off in the middle of a
+non-English character (seen with Hindi YouTube titles). The fix, applied on the
+panel on 11 Oct 2026, keeps CheckJNI off at every start:
+  adb shell "echo dalvik.vm.checkjni=false > /data/local.prop; chmod 644 /data/local.prop"
+  adb reboot
+(adb shell getprop dalvik.vm.checkjni should then say false; delete the file to
+undo). If it ever comes back, the clock shows "Bluetooth keeps crashing · TV
+titles" and the helper stops restarting Bluetooth, which can't help there.
 android/root/ holds an optional boot script that also switches off the Wi-Fi
 driver's power saving and Bluetooth sleep (needs adb remount; not installed).
 
